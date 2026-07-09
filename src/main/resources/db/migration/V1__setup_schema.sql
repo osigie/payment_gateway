@@ -14,7 +14,7 @@ CREATE TABLE payments
     merchant_order_id    VARCHAR(100) NOT NULL,
     merchant_customer_id VARCHAR(100) NOT NULL,
     amount_minor         BIGINT       NOT NULL,
-    currency             CHAR(3)      NOT NULL,
+    currency             VARCHAR(3)      NOT NULL,
     status               VARCHAR(50)  NOT NULL, -- PENDING, AUTHORIZED, CAPTURED, FAILED, REFUNDED, VOIDED
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -41,6 +41,8 @@ CREATE TABLE idempotency_keys
 );
 
 CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key);
+
+CREATE INDEX idx_idempotency_keys_payment_id ON idempotency_keys (payment_id);
 
 CREATE TABLE transactions
 (
