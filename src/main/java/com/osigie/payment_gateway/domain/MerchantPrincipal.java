@@ -1,4 +1,9 @@
 package com.osigie.payment_gateway.domain;
 
-public record MerchantPrincipal() {
+import java.util.UUID;
+
+public record MerchantPrincipal(
+        UUID merchantId,
+        String name
+) {
 }

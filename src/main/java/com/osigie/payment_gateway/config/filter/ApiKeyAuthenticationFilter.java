@@ -1,4 +1,4 @@
-package com.osigie.payment_gateway.config.security.filter;
+package com.osigie.payment_gateway.config.filter;
 
 import com.osigie.payment_gateway.config.security.ApiAuthenticationToken;
 import jakarta.servlet.FilterChain;
@@ -8,12 +8,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
-
+@Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
-    private static final String API_KEY_HEADER = "X-Api-Key";
+    private static final String API_KEY_HEADER = "x-api-key";
     private final AuthenticationManager authenticationManager;
 
     public ApiKeyAuthenticationFilter(AuthenticationManager authenticationManager) {
