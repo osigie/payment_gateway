@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface PaymentService {
 
-    public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath);
+    Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath);
 
 
 }
