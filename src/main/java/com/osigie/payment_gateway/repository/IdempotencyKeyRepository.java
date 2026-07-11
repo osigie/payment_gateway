@@ -14,8 +14,7 @@ import java.util.UUID;
 public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            SELECT i from IdempotencyKey i WHERE i.merchant.id =: merchantId 
-            AND i.idempotencyKey =: idempotencyKey
+            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey
             """)
     Optional<IdempotencyKey> findIdempotencyForUpdate(
             String idempotencyKey, UUID merchantId);
