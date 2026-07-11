@@ -125,4 +125,8 @@ public class IdempotencyKey {
     public void setLastRunAt(OffsetDateTime lastRunAt) {
         this.lastRunAt = lastRunAt;
     }
+
+    public void setRecoveryPoint(String recoveryPoint) {
+        this.recoveryPoint = recoveryPoint;
+    }
 }
