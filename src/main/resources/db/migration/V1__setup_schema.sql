@@ -29,7 +29,6 @@ CREATE TABLE idempotency_keys
     idempotency_key      VARCHAR(100) NOT NULL,
     merchant_id          UUID         NOT NULL REFERENCES merchants (id),
     payment_id           UUID REFERENCES payments (id),
-    merchant_customer_id UUID         NOT NULL,
     request_params       JSONB        NOT NULL,
     request_path         VARCHAR(100) NOT NULL,
     response_status      INT,

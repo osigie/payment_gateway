@@ -1,7 +1,9 @@
 package com.osigie.payment_gateway.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
@@ -18,11 +20,11 @@ public class IdempotencyKey {
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "merchant_id", nullable = false)
+    @JoinColumn(name = "merchant_id")
     private Merchant merchant;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id", nullable = false)
+    @JoinColumn(name = "payment_id")
     private Payment payment;
 
     @Column(name = "idempotency_key", nullable = false)
@@ -39,7 +41,7 @@ public class IdempotencyKey {
     private int responseStatus;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "response_body", nullable = false, columnDefinition = "JSONB")
+    @Column(name = "response_body", columnDefinition = "JSONB")
     private String responseBody;
 
     @Column(name = "recovery_point", nullable = false)
@@ -49,19 +51,21 @@ public class IdempotencyKey {
     @Column(name = "last_run_at", nullable = false, updatable = false)
     private OffsetDateTime lastRunAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false,  nullable = false)
     private OffsetDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
 
-    public IdempotencyKey(String idempotencyKey, String requestParams, String requestPath, String recoveryPoint, Payment payment, Merchant merchant) {
+    public IdempotencyKey(Merchant merchant, String idempotencyKey, String requestParams, String requestPath, String recoveryPoint, OffsetDateTime lastRunAt) {
         this.idempotencyKey = idempotencyKey;
         this.requestParams = requestParams;
         this.requestPath = requestPath;
         this.recoveryPoint = recoveryPoint;
-        this.payment = payment;
+        this.lastRunAt = lastRunAt;
         this.merchant = merchant;
     }
 
@@ -124,5 +128,17 @@ public class IdempotencyKey {
 
     public void setLastRunAt(OffsetDateTime lastRunAt) {
         this.lastRunAt = lastRunAt;
+    }
+
+    public void setRecoveryPoint(String recoveryPoint) {
+        this.recoveryPoint = recoveryPoint;
+    }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
+    }
+
+    public void setMerchant(Merchant merchant) {
+        this.merchant = merchant;
     }
 }

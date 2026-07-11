@@ -3,6 +3,7 @@ package com.osigie.payment_gateway.domain.entity;
 import com.osigie.payment_gateway.domain.TransactionStatus;
 import com.osigie.payment_gateway.domain.TransactionType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class Transaction {
     @Column(name = "bank_reference")
     private String bankReference;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
