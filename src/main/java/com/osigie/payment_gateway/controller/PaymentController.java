@@ -9,6 +9,7 @@ import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 import com.osigie.payment_gateway.dto.payment.PaymentResponse;
 import com.osigie.payment_gateway.mapper.PaymentMapper;
 import com.osigie.payment_gateway.service.PaymentService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +29,9 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
-        Result<Payment> payment = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey);
+    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey,   HttpServletRequest request) {
+        String requestPath = request.getRequestURI();
+        Result<Payment> payment = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
         Result<PaymentResponse> paymentDto = payment.map(paymentMapper::toDto);
         return ResponseMapper.toResponse(paymentDto);
     }
