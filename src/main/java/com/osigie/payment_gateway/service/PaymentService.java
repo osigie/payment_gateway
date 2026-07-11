@@ -1,0 +1,10 @@
+package com.osigie.payment_gateway.service;
+
+import com.osigie.payment_gateway.domain.entity.Payment;
+import com.osigie.payment_gateway.dto.Result;
+import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
+
+public interface PaymentService {
+
+    public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto);
+}
