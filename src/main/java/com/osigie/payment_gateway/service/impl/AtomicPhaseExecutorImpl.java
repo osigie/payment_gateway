@@ -53,8 +53,11 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
             }
             case PhaseResult.Response<?> response -> {
                 key.setRecoveryPoint(AuthorizeRecoveryPoints.FINISHED);
-//               TODO: think about how to handle failure and sucess result
-//                key.setResponseStatus(response.result());
+                int status = 200;
+                if (response.result().error() != null) {
+                    status = response.result().error().code().getHttpStatus().value();
+                }
+                key.setResponseStatus(status);
                 key.setResponseBody(serialize(response.result()));
 
             }
