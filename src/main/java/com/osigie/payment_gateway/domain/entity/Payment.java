@@ -2,6 +2,8 @@ package com.osigie.payment_gateway.domain.entity;
 
 import com.osigie.payment_gateway.domain.PaymentStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -38,10 +40,11 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
-
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
