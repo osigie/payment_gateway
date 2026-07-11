@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.controller;
 
+import com.osigie.payment_gateway.domain.MerchantPrincipal;
 import com.osigie.payment_gateway.domain.entity.Payment;
 import com.osigie.payment_gateway.dto.BaseResponse;
 import com.osigie.payment_gateway.dto.ResponseMapper;
@@ -9,6 +10,7 @@ import com.osigie.payment_gateway.dto.payment.PaymentResponse;
 import com.osigie.payment_gateway.mapper.PaymentMapper;
 import com.osigie.payment_gateway.service.PaymentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -29,12 +31,18 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto) {
+    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal) {
+        System.out.println(merchantPrincipal.merchantId());
         Result<Payment> payment = paymentService.createAuthorize(dto);
         Result<PaymentResponse> paymentDto = payment.map(paymentMapper::toDto);
         return ResponseMapper.toResponse(paymentDto);
     }
 
+
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("OK");
+    }
 
     @GetMapping("{paymentId}")
     public ResponseEntity<?> getPayment(@PathVariable("paymentId") UUID paymentId) {
