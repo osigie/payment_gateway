@@ -31,7 +31,9 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal) {
+    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
+
+        System.out.println(idempotencyKey);
         System.out.println(merchantPrincipal.merchantId());
         Result<Payment> payment = paymentService.createAuthorize(dto);
         Result<PaymentResponse> paymentDto = payment.map(paymentMapper::toDto);
@@ -40,7 +42,8 @@ public class PaymentController {
 
 
     @GetMapping("/test")
-    public ResponseEntity<String> test() {
+    public ResponseEntity<String> test(
+    ) {
         return ResponseEntity.ok("OK");
     }
 
