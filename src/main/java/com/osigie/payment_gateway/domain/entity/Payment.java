@@ -55,6 +55,10 @@ public class Payment {
         this.status = status;
     }
 
+    public Payment(PaymentStatus paymentStatus) {
+        this.status = paymentStatus;
+    }
+
     public UUID getId() {
         return id;
     }

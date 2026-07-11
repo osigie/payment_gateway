@@ -1,53 +1,55 @@
 package com.osigie.payment_gateway.service.impl;
 
-import com.osigie.payment_gateway.domain.ErrorCode;
+import com.osigie.payment_gateway.domain.PaymentStatus;
 import com.osigie.payment_gateway.domain.PhaseResult;
 import com.osigie.payment_gateway.domain.StartAuthorizationContext;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
+import com.osigie.payment_gateway.domain.entity.Merchant;
 import com.osigie.payment_gateway.domain.entity.Payment;
 import com.osigie.payment_gateway.domain.recovery_points.AuthorizeRecoveryPoints;
 import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
-import com.osigie.payment_gateway.repository.IdempotencyKeyRepository;
+import com.osigie.payment_gateway.repository.MerchantRepository;
 import com.osigie.payment_gateway.repository.PaymentRepository;
 import com.osigie.payment_gateway.service.AtomicPhaseExecutor;
+import com.osigie.payment_gateway.service.BankClient;
+import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import com.osigie.payment_gateway.service.PaymentService;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.OffsetDateTime;
 import java.util.*;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
     private final AtomicPhaseExecutor executor;
-    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final IdempotencyKeyService idempotencyKeyService;
     private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
+    private final MerchantRepository merchantRepository;
+    private final BankClient bankClient;
 
-    public PaymentServiceImpl(AtomicPhaseExecutor executor, IdempotencyKeyRepository idempotencyKeyRepository, PaymentRepository paymentRepository, ObjectMapper objectMapper) {
+    public PaymentServiceImpl(AtomicPhaseExecutor executor,
+                              IdempotencyKeyService idempotencyKeyService,
+                              PaymentRepository paymentRepository, ObjectMapper objectMapper,
+                              MerchantRepository merchantRepository, BankClient bankClient) {
         this.executor = executor;
-        this.idempotencyKeyRepository = idempotencyKeyRepository;
+        this.idempotencyKeyService = idempotencyKeyService;
         this.paymentRepository = paymentRepository;
         this.objectMapper = objectMapper;
+        this.merchantRepository = merchantRepository;
+        this.bankClient = bankClient;
     }
 
     @Override
     public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey) {
         while (true) {
 //            TODO: handle exception class
-            Optional<IdempotencyKey> optionalKey = idempotencyKeyRepository
-                    .findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey);
-
-
-            if (optionalKey.isEmpty()) {
-                return Result.failure(
-                        ErrorCode.IDEMPOTENCY_KEY_NOT_FOUND,
-                        "Idempotency key not found"
-                );
-            }
-
-            IdempotencyKey key = optionalKey.get();
+//            TODO: wire request details
+            IdempotencyKey key = idempotencyKeyService
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, "", "");
 
 
             if (Objects.equals(key.getRecoveryPoint(), AuthorizeRecoveryPoints.FINISHED)) {
@@ -55,10 +57,11 @@ public class PaymentServiceImpl implements PaymentService {
                 });
             }
 
+
             StartAuthorizationContext context =
                     new StartAuthorizationContext(
                             merchantId,
-                            idempotencyKey,
+                            key,
                             dto
                     );
 
@@ -88,19 +91,38 @@ public class PaymentServiceImpl implements PaymentService {
 
     private PhaseResult startAuthorization(IdempotencyKey IdempotencyKey) {
 
+        Payment payment = new Payment(PaymentStatus.PENDING);
+        paymentRepository.save(payment);
         return new PhaseResult.RecoveryPoint(
                 AuthorizeRecoveryPoints.AUTHORIZATION_CREATED
         );
     }
 
     private PhaseResult createAuthorization(StartAuthorizationContext context) {
+//        TODO: exception
+        Merchant merchant = merchantRepository.findById(context.merchantId())
+                .orElseThrow(() -> new RuntimeException("Merchant not found"));
 
+        Payment payment = new Payment(merchant,
+                context.dto().merchantOrderId(),
+                context.dto().merchantCustomerId(),
+                context.dto().amountMinor(), "NGN", PaymentStatus.AUTHORIZED);
+
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        idempotencyKeyService.update(context.idempotencyKey());
+
+        paymentRepository.save(payment);
         return new PhaseResult.RecoveryPoint(
                 AuthorizeRecoveryPoints.BANK_AUTHORIZED
         );
     }
 
     private PhaseResult createBankAuthorization(StartAuthorizationContext context) {
+
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+        idempotencyKeyService.update(context.idempotencyKey());
+
         return new PhaseResult.RecoveryPoint(
                 AuthorizeRecoveryPoints.FINISHED
         );
@@ -108,9 +130,13 @@ public class PaymentServiceImpl implements PaymentService {
 
 
     private PhaseResult finishAuthorization(StartAuthorizationContext context) {
-//        Payment payment = paymentRepository.findById();
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+        Payment payment = context.idempotencyKey().getPayment();
+
+        idempotencyKeyService.update(context.idempotencyKey());
+
         return new PhaseResult.Response<>(
-                Result.success(null));
+                Result.success(payment));
     }
 
     private <T> T deserialize(String json, TypeReference<T> typeRef) {
@@ -120,4 +146,5 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException(e);
         }
     }
+
 }
