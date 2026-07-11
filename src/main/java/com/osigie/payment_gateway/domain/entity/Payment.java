@@ -29,7 +29,7 @@ public class Payment {
     private String merchantCustomerId;
 
     @Column(name = "amount_minor")
-    private long amount_minor;
+    private long amountMinor;
 
     @Column(name = "currency")
     private String currency;
@@ -46,11 +46,11 @@ public class Payment {
     private OffsetDateTime updatedAt;
 
 
-    public Payment(Merchant merchant, String merchantOrderId, String merchantCustomerId, long amount_minor, String currency, PaymentStatus status) {
+    public Payment(Merchant merchant, String merchantOrderId, String merchantCustomerId, long amountMinor, String currency, PaymentStatus status) {
         this.merchant = merchant;
         this.merchantOrderId = merchantOrderId;
         this.merchantCustomerId = merchantCustomerId;
-        this.amount_minor = amount_minor;
+        this.amountMinor = amountMinor;
         this.currency = currency;
         this.status = status;
     }
@@ -71,8 +71,8 @@ public class Payment {
         return merchantCustomerId;
     }
 
-    public long getAmount_minor() {
-        return amount_minor;
+    public long getAmountMinor() {
+        return amountMinor;
     }
 
     public String getCurrency() {
