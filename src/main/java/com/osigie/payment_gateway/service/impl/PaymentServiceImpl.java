@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.service.impl;
 
+import com.osigie.payment_gateway.domain.ErrorCode;
 import com.osigie.payment_gateway.domain.PaymentStatus;
 import com.osigie.payment_gateway.domain.PhaseResult;
 import com.osigie.payment_gateway.domain.StartAuthorizationContext;
@@ -44,12 +45,12 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey) {
+    public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath) {
         while (true) {
 //            TODO: handle exception class
 //            TODO: wire request details
             IdempotencyKey key = idempotencyKeyService
-                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, "", "");
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, objectMapper.writeValueAsString(dto), requestPath);
 
 
             if (Objects.equals(key.getRecoveryPoint(), AuthorizeRecoveryPoints.FINISHED)) {
@@ -89,10 +90,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    private PhaseResult startAuthorization(IdempotencyKey IdempotencyKey) {
+    private PhaseResult startAuthorization(IdempotencyKey idempotencyKey) {
 
-        Payment payment = new Payment(PaymentStatus.PENDING);
-        paymentRepository.save(payment);
         return new PhaseResult.RecoveryPoint(
                 AuthorizeRecoveryPoints.AUTHORIZATION_CREATED
         );
@@ -106,34 +105,44 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = new Payment(merchant,
                 context.dto().merchantOrderId(),
                 context.dto().merchantCustomerId(),
-                context.dto().amountMinor(), "NGN", PaymentStatus.AUTHORIZED);
+                context.dto().amountMinor(), "USD", PaymentStatus.PENDING);
+
+        paymentRepository.save(payment);
 
         context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+        context.idempotencyKey().setPayment(payment);
 
         idempotencyKeyService.update(context.idempotencyKey());
 
-        paymentRepository.save(payment);
         return new PhaseResult.RecoveryPoint(
                 AuthorizeRecoveryPoints.BANK_AUTHORIZED
         );
     }
 
     private PhaseResult createBankAuthorization(StartAuthorizationContext context) {
+        try {
 
-        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
-        idempotencyKeyService.update(context.idempotencyKey());
+            context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+            idempotencyKeyService.update(context.idempotencyKey());
+            throw new RuntimeException();
 
-        return new PhaseResult.RecoveryPoint(
-                AuthorizeRecoveryPoints.FINISHED
-        );
+//            return new PhaseResult.RecoveryPoint(
+//                    AuthorizeRecoveryPoints.FINISHED
+//            );
+        } catch (Exception e) {
+            return new PhaseResult.Response<>(Result.failure(ErrorCode.BANK_UNAVAILABLE, "Bank has not being implemented"));
+        }
+
     }
 
 
     private PhaseResult finishAuthorization(StartAuthorizationContext context) {
         context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
         Payment payment = context.idempotencyKey().getPayment();
+        payment.setStatus(PaymentStatus.AUTHORIZED);
 
         idempotencyKeyService.update(context.idempotencyKey());
+        paymentRepository.save(payment);
 
         return new PhaseResult.Response<>(
                 Result.success(payment));

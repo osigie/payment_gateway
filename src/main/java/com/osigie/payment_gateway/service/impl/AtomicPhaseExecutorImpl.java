@@ -50,7 +50,7 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
             case PhaseResult.NoOp ignored -> {
             }
             case PhaseResult.RecoveryPoint recoveryPoint -> {
-                key.setRecoveryPoint(recoveryPoint.toString());
+                key.setRecoveryPoint(recoveryPoint.name());
             }
             case PhaseResult.Response<?> response -> {
                 key.setRecoveryPoint(AuthorizeRecoveryPoints.FINISHED);

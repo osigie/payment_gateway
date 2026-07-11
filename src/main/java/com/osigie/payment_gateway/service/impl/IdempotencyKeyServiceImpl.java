@@ -1,28 +1,39 @@
 package com.osigie.payment_gateway.service.impl;
 
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
+import com.osigie.payment_gateway.domain.entity.Merchant;
 import com.osigie.payment_gateway.repository.IdempotencyKeyRepository;
+import com.osigie.payment_gateway.repository.MerchantRepository;
 import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
+
 @Service
 public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
 
     public static final String STARTED = "STARTED";
 
     private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final MerchantRepository merchantRepository;
 
-    public IdempotencyKeyServiceImpl(IdempotencyKeyRepository idempotencyKeyRepository) {
+    public IdempotencyKeyServiceImpl(IdempotencyKeyRepository idempotencyKeyRepository, MerchantRepository merchantRepository) {
         this.idempotencyKeyRepository = idempotencyKeyRepository;
+        this.merchantRepository = merchantRepository;
     }
 
     @Override
     public IdempotencyKey getOrCreateIdempotencyKey(UUID merchantId, String idempotencyKey, String requestParams, String requestPath) {
+
         return idempotencyKeyRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey)
                 .orElseGet(() -> {
-                    IdempotencyKey key = new IdempotencyKey(idempotencyKey, requestParams, requestPath, STARTED);
+
+                    Merchant merchant = merchantRepository.findById(merchantId)
+                            .orElseThrow(() -> new RuntimeException("Merchant not found"));
+
+                    IdempotencyKey key = new IdempotencyKey(merchant, idempotencyKey, requestParams, requestPath, STARTED, OffsetDateTime.now());
                     idempotencyKeyRepository.save(key);
                     return key;
                 });
