@@ -5,6 +5,7 @@ import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.recovery_points.AuthorizeRecoveryPoints;
 import com.osigie.payment_gateway.repository.IdempotencyKeyRepository;
 import com.osigie.payment_gateway.service.AtomicPhaseExecutor;
+import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -15,12 +16,12 @@ import java.util.function.Supplier;
 
 @Service
 public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
-    private final IdempotencyKeyRepository idempotencyKeyRepository;
     private final ObjectMapper objectMapper;
+    private final IdempotencyKeyService idempotencyKeyService;
 
-    public AtomicPhaseExecutorImpl(IdempotencyKeyRepository idempotencyKeyRepository, ObjectMapper objectMapper) {
-        this.idempotencyKeyRepository = idempotencyKeyRepository;
+    public AtomicPhaseExecutorImpl(ObjectMapper objectMapper, IdempotencyKeyService idempotencyKeyService) {
         this.objectMapper = objectMapper;
+        this.idempotencyKeyService = idempotencyKeyService;
     }
 
     @Transactional
@@ -36,7 +37,7 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
                             Function<IdempotencyKey, T> loader,
                             Function<T, PhaseResult> phase) {
 
-        IdempotencyKey key = idempotencyKeyRepository
+        IdempotencyKey key = idempotencyKeyService
                 .findIdempotencyForUpdate(idempotencyKey, merchantId)
                 .orElseThrow(() -> new IllegalStateException("Idempotency key not found"));
 
@@ -62,7 +63,7 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
 
             }
         }
-        idempotencyKeyRepository.save(key);
+        idempotencyKeyService.update(key);
     }
 
     private String serialize(Object body) {

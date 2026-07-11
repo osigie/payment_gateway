@@ -56,13 +56,11 @@ public class IdempotencyKey {
     private OffsetDateTime updatedAt;
 
 
-    public IdempotencyKey(String idempotencyKey, String requestParams, String requestPath, String recoveryPoint, Payment payment, Merchant merchant) {
+    public IdempotencyKey(String idempotencyKey, String requestParams, String requestPath, String recoveryPoint) {
         this.idempotencyKey = idempotencyKey;
         this.requestParams = requestParams;
         this.requestPath = requestPath;
         this.recoveryPoint = recoveryPoint;
-        this.payment = payment;
-        this.merchant = merchant;
     }
 
 
@@ -128,5 +126,13 @@ public class IdempotencyKey {
 
     public void setRecoveryPoint(String recoveryPoint) {
         this.recoveryPoint = recoveryPoint;
+    }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
+    }
+
+    public void setMerchant(Merchant merchant) {
+        this.merchant = merchant;
     }
 }
