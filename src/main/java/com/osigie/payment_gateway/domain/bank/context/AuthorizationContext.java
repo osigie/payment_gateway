@@ -1,4 +1,4 @@
-package com.osigie.payment_gateway.domain;
+package com.osigie.payment_gateway.domain.bank.context;
 
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;

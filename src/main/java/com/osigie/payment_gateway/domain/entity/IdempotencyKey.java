@@ -24,7 +24,7 @@ public class IdempotencyKey {
     @JoinColumn(name = "merchant_id")
     private Merchant merchant;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "payment_id")
     private Payment payment;
 

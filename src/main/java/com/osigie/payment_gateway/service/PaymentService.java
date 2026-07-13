@@ -12,4 +12,8 @@ public interface PaymentService {
     Result<PaymentResponse> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath);
 
     Result<PaymentResponse> createCapture(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath);
+
+    Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath);
+
+    Result<PaymentResponse> createVoid(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath);
 }

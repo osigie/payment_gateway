@@ -1,6 +1,5 @@
 package com.osigie.payment_gateway.service;
 
-import com.osigie.payment_gateway.domain.IdempotencyKeyType;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 
 import java.util.Optional;
