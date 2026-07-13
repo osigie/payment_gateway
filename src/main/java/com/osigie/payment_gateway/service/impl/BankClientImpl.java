@@ -1,15 +1,19 @@
 package com.osigie.payment_gateway.service.impl;
 
+import com.osigie.payment_gateway.domain.ErrorCode;
 import com.osigie.payment_gateway.domain.bank.BankErrorResponse;
 import com.osigie.payment_gateway.domain.bank.CreateBankAuthorizationRequest;
 import com.osigie.payment_gateway.domain.bank.CreateBankAuthorizationResponse;
+import com.osigie.payment_gateway.exception.BankBusinessException;
+import com.osigie.payment_gateway.exception.BankUnavailableException;
 import com.osigie.payment_gateway.service.BankClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.resilience.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
@@ -39,6 +43,15 @@ public class BankClientImpl implements BankClient {
                 .build();
     }
 
+
+    @Retryable(
+            includes = {BankUnavailableException.class, ResourceAccessException.class},
+            maxRetries = 3,
+            delay = 500,
+            multiplier = 2.0,
+            jitter = 50
+
+    )
     public CreateBankAuthorizationResponse createAuthorization(CreateBankAuthorizationRequest request, String idempotencyKey) {
         return restClient.post()
                 .uri("/authorizations")
@@ -52,10 +65,26 @@ public class BankClientImpl implements BankClient {
                     if (status.is2xxSuccessful()) {
                         return clientResponse.bodyTo(CreateBankAuthorizationResponse.class);
                     }
+
                     BankErrorResponse errorResponse = clientResponse.bodyTo(BankErrorResponse.class);
 
-//                    TODO: create exception for different business, and server error
-                    throw new RuntimeException(errorResponse.message());
+                    if (errorResponse == null) {
+                        throw new BankUnavailableException("Bank returned " + status + " with an empty response body.");
+                    }
+
+                    if (status.is4xxClientError()) {
+                        throw new BankBusinessException(errorResponse.message(), errorResponse.error(), status);
+                    }
+
+                    throw new BankUnavailableException(errorResponse.message());
                 }));
+    }
+
+    public ErrorCode mapBankErrrorToErrorCode(HttpStatusCode status) {
+        return switch (status) {
+            case HttpStatus.BAD_REQUEST -> ErrorCode.BAD_REQUEST;
+            case HttpStatus.PAYMENT_REQUIRED -> ErrorCode.INSUFFICIENT_FUNDS;
+            default -> ErrorCode.BANK_UNAVAILABLE;
+        };
     }
 }
