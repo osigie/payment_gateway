@@ -1,13 +1,11 @@
 package com.osigie.payment_gateway.controller;
 
 import com.osigie.payment_gateway.domain.MerchantPrincipal;
-import com.osigie.payment_gateway.domain.entity.Payment;
 import com.osigie.payment_gateway.dto.BaseResponse;
 import com.osigie.payment_gateway.dto.ResponseMapper;
 import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 import com.osigie.payment_gateway.dto.payment.PaymentResponse;
-import com.osigie.payment_gateway.mapper.PaymentMapper;
 import com.osigie.payment_gateway.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -37,12 +35,6 @@ public class PaymentController {
     }
 
 
-    @GetMapping("/test")
-    public ResponseEntity<String> test(
-    ) {
-        return ResponseEntity.ok("OK");
-    }
-
     @GetMapping("{paymentId}")
     public ResponseEntity<?> getPayment(@PathVariable("paymentId") UUID paymentId) {
         return ResponseEntity.ok(null);
@@ -56,8 +48,12 @@ public class PaymentController {
 
 
     @PostMapping("{paymentId}/capture")
-    public ResponseEntity<?> createCapture(@PathVariable("paymentId") UUID paymentId) {
-        return ResponseEntity.ok(null);
+    public ResponseEntity<?> createCapture(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+        String requestPath = request.getRequestURI();
+
+        Result<PaymentResponse> paymentResponse = paymentService.createCapture(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+
+        return ResponseMapper.toResponse(paymentResponse);
     }
 
 

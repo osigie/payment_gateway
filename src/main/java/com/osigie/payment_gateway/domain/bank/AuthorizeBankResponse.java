@@ -6,6 +6,6 @@ import tools.jackson.databind.annotation.JsonNaming;
 import java.time.OffsetDateTime;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public record CreateBankAuthorizationResponse(long amount, String authorizationId, OffsetDateTime createdAt,
-                                              OffsetDateTime expiresAt, String status) {
+public record AuthorizeBankResponse(long amount, String authorizationId, OffsetDateTime createdAt,
+                                    OffsetDateTime expiresAt, String status) {
 }

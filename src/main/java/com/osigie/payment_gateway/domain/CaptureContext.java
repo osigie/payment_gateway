@@ -1,4 +1,6 @@
 package com.osigie.payment_gateway.domain;
 
-public record CaptureContext() {
+import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
+
+public record CaptureContext(String authorizationRefId, long amount, IdempotencyKey idempotencyKey) {
 }

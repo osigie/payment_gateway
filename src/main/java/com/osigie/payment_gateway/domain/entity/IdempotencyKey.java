@@ -1,5 +1,7 @@
 package com.osigie.payment_gateway.domain.entity;
 
+import com.osigie.payment_gateway.domain.IdempotencyKeyType;
+import com.osigie.payment_gateway.domain.TransactionType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -51,8 +53,9 @@ public class IdempotencyKey {
     @Column(name = "last_run_at", nullable = false, updatable = false)
     private OffsetDateTime lastRunAt;
 
+
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false,  nullable = false)
+    @Column(name = "created_at", updatable = false, nullable = false)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
@@ -118,6 +121,7 @@ public class IdempotencyKey {
         return updatedAt;
     }
 
+
     public void setResponseStatus(int responseStatus) {
         this.responseStatus = responseStatus;
     }
@@ -141,4 +145,5 @@ public class IdempotencyKey {
     public void setMerchant(Merchant merchant) {
         this.merchant = merchant;
     }
+
 }
