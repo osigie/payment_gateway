@@ -26,19 +26,19 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
 
     @Transactional
     @Override
-    public void execute(UUID merchantId, String idempotencyKey, Function<IdempotencyKey, PhaseResult> phase) {
-        execute(merchantId, idempotencyKey, Function.identity(), phase);
+    public void execute(UUID merchantId, String idempotencyKey, String requestPath, Function<IdempotencyKey, PhaseResult> phase) {
+        execute(merchantId, idempotencyKey,requestPath, Function.identity(), phase);
     }
 
 
     @Transactional
     @Override
-    public <T> void execute(UUID merchantId, String idempotencyKey,
+    public <T> void execute(UUID merchantId, String idempotencyKey, String requestPath,
                             Function<IdempotencyKey, T> loader,
                             Function<T, PhaseResult> phase) {
 
         IdempotencyKey key = idempotencyKeyService
-                .findIdempotencyForUpdate(idempotencyKey, merchantId)
+                .findIdempotencyForUpdate(idempotencyKey, merchantId, requestPath)
                 .orElseThrow(() -> new IllegalStateException("Idempotency key not found"));
 
 

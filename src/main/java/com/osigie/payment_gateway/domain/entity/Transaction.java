@@ -25,7 +25,7 @@ public class Transaction {
     private Payment payment;
 
     @Column(name = "amount_minor")
-    private long amount_minor;
+    private long amountMinor;
 
     @Column(name = "type")
     @Enumerated(EnumType.STRING)
@@ -43,9 +43,9 @@ public class Transaction {
     private OffsetDateTime createdAt;
 
 
-    public Transaction(Payment payment, long amount_minor, TransactionType type, TransactionStatus status, String bankReference) {
+    public Transaction(Payment payment, long amountMinor, TransactionType type, TransactionStatus status, String bankReference) {
         this.payment = payment;
-        this.amount_minor = amount_minor;
+        this.amountMinor = amountMinor;
         this.type = type;
         this.status = status;
         this.bankReference = bankReference;
@@ -59,8 +59,8 @@ public class Transaction {
         return payment;
     }
 
-    public long getAmount_minor() {
-        return amount_minor;
+    public long getAmountMinor() {
+        return amountMinor;
     }
 
     public TransactionType getType() {

@@ -9,6 +9,6 @@ public class PaymentMapper {
 
     public PaymentResponse toDto(Payment payment) {
 
-        return new PaymentResponse(payment.getMerchantOrderId(), payment.getMerchantCustomerId(), payment.getAmountMinor(), payment.getStatus(), payment.getCreatedAt(), payment.getUpdatedAt());
+        return new PaymentResponse(payment.getMerchantOrderId(), payment.getMerchantCustomerId(), payment.getAmountMinor(), payment.getStatus(), payment.getCreatedAt(), payment.getUpdatedAt(),  payment.getId(), payment.getStatus());
     }
 }

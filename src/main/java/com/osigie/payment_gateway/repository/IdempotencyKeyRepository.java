@@ -14,18 +14,13 @@ import java.util.UUID;
 @Repository
 public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"payment", "merchant"})
     @Query("""
-            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey
+            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey AND i.requestPath = :requestPath
             """)
     Optional<IdempotencyKey> findIdempotencyForUpdate(
-            String idempotencyKey, UUID merchantId);
+            String idempotencyKey, UUID merchantId, String requestPath);
 
-    @EntityGraph(attributePaths = "payment")
-    @Query("""
-            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey
-            """)
-    Optional<IdempotencyKey> findByMerchantIdAndIdempotencyKey(
-            UUID merchantId,
-            String idempotencyKey
-    );
+
+    Optional<IdempotencyKey> findByMerchantIdAndIdempotencyKeyAndRequestPath(UUID merchantId, String idempotencyKey, String requestPath);
 }

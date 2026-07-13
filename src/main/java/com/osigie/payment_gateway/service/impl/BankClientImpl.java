@@ -1,9 +1,7 @@
 package com.osigie.payment_gateway.service.impl;
 
 import com.osigie.payment_gateway.domain.ErrorCode;
-import com.osigie.payment_gateway.domain.bank.BankErrorResponse;
-import com.osigie.payment_gateway.domain.bank.CreateBankAuthorizationRequest;
-import com.osigie.payment_gateway.domain.bank.CreateBankAuthorizationResponse;
+import com.osigie.payment_gateway.domain.bank.*;
 import com.osigie.payment_gateway.exception.BankBusinessException;
 import com.osigie.payment_gateway.exception.BankUnavailableException;
 import com.osigie.payment_gateway.service.BankClient;
@@ -38,7 +36,7 @@ public class BankClientImpl implements BankClient {
 
         this.restClient = RestClient.builder()
                 .requestFactory(factory)
-//                TODO: take to ppties
+                //                TODO: take to ppties
                 .baseUrl("http://localhost:8787/api/v1")
                 .build();
     }
@@ -52,7 +50,7 @@ public class BankClientImpl implements BankClient {
             jitter = 50
 
     )
-    public CreateBankAuthorizationResponse createAuthorization(CreateBankAuthorizationRequest request, String idempotencyKey) {
+    public AuthorizeBankResponse authorize(AuthorizeBankRequest request, String idempotencyKey) {
         return restClient.post()
                 .uri("/authorizations")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +61,7 @@ public class BankClientImpl implements BankClient {
                     HttpStatusCode status = clientResponse.getStatusCode();
 
                     if (status.is2xxSuccessful()) {
-                        return clientResponse.bodyTo(CreateBankAuthorizationResponse.class);
+                        return clientResponse.bodyTo(AuthorizeBankResponse.class);
                     }
 
                     BankErrorResponse errorResponse = clientResponse.bodyTo(BankErrorResponse.class);
@@ -86,5 +84,42 @@ public class BankClientImpl implements BankClient {
             case HttpStatus.PAYMENT_REQUIRED -> ErrorCode.INSUFFICIENT_FUNDS;
             default -> ErrorCode.BANK_UNAVAILABLE;
         };
+    }
+
+    @Retryable(
+            includes = {BankUnavailableException.class, ResourceAccessException.class},
+            maxRetries = 3,
+            delay = 500,
+            multiplier = 2.0,
+            jitter = 50
+
+    )
+    @Override
+    public CaptureBankResponse capture(CaptureBankRequest request, String idempotencyKey) {
+        return restClient.post()
+                .uri("/captures")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", idempotencyKey)
+                .body(request)
+                .exchange(((clientRequest, clientResponse) -> {
+                    HttpStatusCode status = clientResponse.getStatusCode();
+
+                    if (status.is2xxSuccessful()) {
+                        return clientResponse.bodyTo(CaptureBankResponse.class);
+                    }
+
+                    BankErrorResponse errorResponse = clientResponse.bodyTo(BankErrorResponse.class);
+
+                    if (errorResponse == null) {
+                        throw new BankUnavailableException("Bank returned " + status + " with an empty response body.");
+                    }
+
+                    if (status.is4xxClientError()) {
+                        throw new BankBusinessException(errorResponse.message(), errorResponse.error(), status);
+                    }
+
+                    throw new BankUnavailableException(errorResponse.message());
+                }));
     }
 }

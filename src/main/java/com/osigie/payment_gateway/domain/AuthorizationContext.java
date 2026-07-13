@@ -5,7 +5,7 @@ import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 
 import java.util.UUID;
 
-public record StartAuthorizationContext(
+public record AuthorizationContext(
         UUID merchantId,
         IdempotencyKey idempotencyKey,
         CreateAuthorizationRequestDto dto

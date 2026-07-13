@@ -7,10 +7,10 @@ import java.util.UUID;
 import java.util.function.Function;
 
 public interface AtomicPhaseExecutor {
-    <T> void execute(UUID merchantId, String idempotencyKey, Function<IdempotencyKey, T> loader,
+    <T> void execute(UUID merchantId, String idempotencyKey, String requestPath, Function<IdempotencyKey, T> loader,
                      Function<T, PhaseResult> phase);
 
-    void execute(UUID merchantId, String idempotencyKey, Function<IdempotencyKey, PhaseResult> phase);
+    void execute(UUID merchantId, String idempotencyKey, String requestPath, Function<IdempotencyKey, PhaseResult> phase);
 
 
 }
