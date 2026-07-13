@@ -1,7 +1,6 @@
 package com.osigie.payment_gateway.dto;
 
 
-import com.osigie.payment_gateway.domain.Error;
 
 public record BaseResponse<T>(
 

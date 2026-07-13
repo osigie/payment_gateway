@@ -14,5 +14,5 @@ public interface IdempotencyKeyService {
     Optional<IdempotencyKey> findIdempotencyForUpdate(String idempotencyKey, UUID merchantId);
 
 
-    IdempotencyKey update(IdempotencyKey idempotencyKey);
+    void update(IdempotencyKey idempotencyKey);
 }

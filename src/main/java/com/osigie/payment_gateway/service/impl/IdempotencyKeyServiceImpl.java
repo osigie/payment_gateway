@@ -51,7 +51,7 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     }
 
     @Override
-    public IdempotencyKey update(IdempotencyKey idempotencyKey) {
-        return idempotencyKeyRepository.save(idempotencyKey);
+    public void update(IdempotencyKey idempotencyKey) {
+        idempotencyKeyRepository.save(idempotencyKey);
     }
 }
