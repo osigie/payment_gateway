@@ -1,6 +1,5 @@
 package com.osigie.payment_gateway.service.impl;
 
-import com.osigie.payment_gateway.domain.IdempotencyKeyType;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.entity.Merchant;
 import com.osigie.payment_gateway.domain.entity.Payment;

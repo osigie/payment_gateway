@@ -56,15 +56,25 @@ public class PaymentController {
         return ResponseMapper.toResponse(paymentResponse);
     }
 
+    @PostMapping("{paymentId}/void")
+    public ResponseEntity<?> createVoid(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+        String requestPath = request.getRequestURI();
 
-    @PostMapping("{paymentId}/refund")
-    public ResponseEntity<?> createRefund(@PathVariable("paymentId") UUID paymentId) {
-        return ResponseEntity.ok(null);
+        Result<PaymentResponse> paymentResponse = paymentService.createVoid(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+
+        return ResponseMapper.toResponse(paymentResponse);
     }
 
-    @PostMapping("{paymentId}/void")
-    public ResponseEntity<?> createVoid(@PathVariable("paymentId") UUID paymentId) {
-        return ResponseEntity.ok(null);
+
+    @PostMapping("{paymentId}/refund")
+    public ResponseEntity<?> createRefund(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+
+        String requestPath = request.getRequestURI();
+
+        Result<PaymentResponse> paymentResponse = paymentService.createRefund(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+
+        return ResponseMapper.toResponse(paymentResponse);
+
     }
 
 

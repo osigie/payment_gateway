@@ -19,6 +19,8 @@ import java.time.Duration;
 
 @Service
 public class BankClientImpl implements BankClient {
+
+
     private final RestClient restClient;
 
     public BankClientImpl() {
@@ -78,13 +80,6 @@ public class BankClientImpl implements BankClient {
                 }));
     }
 
-    public ErrorCode mapBankErrrorToErrorCode(HttpStatusCode status) {
-        return switch (status) {
-            case HttpStatus.BAD_REQUEST -> ErrorCode.BAD_REQUEST;
-            case HttpStatus.PAYMENT_REQUIRED -> ErrorCode.INSUFFICIENT_FUNDS;
-            default -> ErrorCode.BANK_UNAVAILABLE;
-        };
-    }
 
     @Retryable(
             includes = {BankUnavailableException.class, ResourceAccessException.class},
@@ -122,4 +117,50 @@ public class BankClientImpl implements BankClient {
                     throw new BankUnavailableException(errorResponse.message());
                 }));
     }
+
+    @Retryable(
+            includes = {BankUnavailableException.class, ResourceAccessException.class},
+            maxRetries = 3,
+            delay = 500,
+            multiplier = 2.0,
+            jitter = 50
+
+    )
+    @Override
+    public VoidBankResponse _void(VoidBankRequest request, String idempotencyKey) {
+        return restClient.post()
+                .uri("/voids")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", idempotencyKey)
+                .body(request)
+                .exchange(((clientRequest, clientResponse) -> {
+                    HttpStatusCode status = clientResponse.getStatusCode();
+
+                    if (status.is2xxSuccessful()) {
+                        return clientResponse.bodyTo(VoidBankResponse.class);
+                    }
+
+                    BankErrorResponse errorResponse = clientResponse.bodyTo(BankErrorResponse.class);
+
+                    if (errorResponse == null) {
+                        throw new BankUnavailableException("Bank returned " + status + " with an empty response body.");
+                    }
+
+                    if (status.is4xxClientError()) {
+                        throw new BankBusinessException(errorResponse.message(), errorResponse.error(), status);
+                    }
+
+                    throw new BankUnavailableException(errorResponse.message());
+                }));
+    }
+
+    public ErrorCode mapBankErrrorToErrorCode(HttpStatusCode status) {
+        return switch (status) {
+            case HttpStatus.BAD_REQUEST -> ErrorCode.BAD_REQUEST;
+            case HttpStatus.PAYMENT_REQUIRED -> ErrorCode.INSUFFICIENT_FUNDS;
+            default -> ErrorCode.BANK_UNAVAILABLE;
+        };
+    }
 }
+

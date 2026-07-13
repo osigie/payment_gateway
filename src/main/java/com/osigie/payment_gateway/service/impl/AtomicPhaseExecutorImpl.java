@@ -2,8 +2,7 @@ package com.osigie.payment_gateway.service.impl;
 
 import com.osigie.payment_gateway.domain.PhaseResult;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
-import com.osigie.payment_gateway.domain.recovery_points.AuthorizeRecoveryPoints;
-import com.osigie.payment_gateway.repository.IdempotencyKeyRepository;
+import com.osigie.payment_gateway.domain.bank.recovery_points.AuthorizeRecoveryPoints;
 import com.osigie.payment_gateway.service.AtomicPhaseExecutor;
 import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import jakarta.transaction.Transactional;
@@ -12,7 +11,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 @Service
 public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {

@@ -1,16 +1,17 @@
 package com.osigie.payment_gateway.service.impl;
 
 import com.osigie.payment_gateway.domain.*;
-import com.osigie.payment_gateway.domain.bank.AuthorizeBankRequest;
-import com.osigie.payment_gateway.domain.bank.AuthorizeBankResponse;
-import com.osigie.payment_gateway.domain.bank.CaptureBankRequest;
-import com.osigie.payment_gateway.domain.bank.CaptureBankResponse;
+import com.osigie.payment_gateway.domain.bank.*;
+import com.osigie.payment_gateway.domain.bank.context.AuthorizationContext;
+import com.osigie.payment_gateway.domain.bank.context.CaptureContext;
+import com.osigie.payment_gateway.domain.bank.context.VoidContext;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.entity.Merchant;
 import com.osigie.payment_gateway.domain.entity.Payment;
 import com.osigie.payment_gateway.domain.entity.Transaction;
-import com.osigie.payment_gateway.domain.recovery_points.AuthorizeRecoveryPoints;
-import com.osigie.payment_gateway.domain.recovery_points.CaptureRecoveryPoints;
+import com.osigie.payment_gateway.domain.bank.recovery_points.AuthorizeRecoveryPoints;
+import com.osigie.payment_gateway.domain.bank.recovery_points.CaptureRecoveryPoints;
+import com.osigie.payment_gateway.domain.bank.recovery_points.VoidRecoveryPoints;
 import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 import com.osigie.payment_gateway.dto.payment.PaymentResponse;
@@ -68,7 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             switch (key.getRecoveryPoint()) {
                 case AuthorizeRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey,requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -84,7 +85,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.BANK_AUTHORIZED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath,k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -92,7 +93,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.BANK_AUTHORIZATION_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath,k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -100,7 +101,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath,k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -198,17 +199,24 @@ public class PaymentServiceImpl implements PaymentService {
                     .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
 
 
-            if (Objects.equals(key.getRecoveryPoint(), CaptureRecoveryPoints.FINISHED) && key.getResponseBody() != null) {
+            if (key.hasCachedResponse(CaptureRecoveryPoints.FINISHED)) {
                 return deserialize(key.getResponseBody(), new TypeReference<>() {
                 });
             }
+
+            Payment payment = key.getPayment();
+
+            if (payment.getStatus() != PaymentStatus.AUTHORIZED) {
+                return Result.failure(ErrorCode.BAD_REQUEST, "Only authorized payment can be captured");
+            }
+
 
             Transaction authorizationTransaction = transactionRepository.findByPaymentIdAndType(key.getPayment().getId(), TransactionType.AUTHORIZED).orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
 
 
             switch (key.getRecoveryPoint()) {
                 case CaptureRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey,requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -216,7 +224,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.BANK_CAPTURE -> {
-                    executor.execute(merchantId, idempotencyKey,requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -224,7 +232,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.BANK_CAPTURE_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath,k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -232,7 +240,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath,k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -246,6 +254,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+
     private PhaseResult startCapture(CaptureContext context) {
         context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
 
@@ -253,6 +262,7 @@ public class PaymentServiceImpl implements PaymentService {
                 CaptureRecoveryPoints.BANK_CAPTURE
         );
     }
+
 
     private PhaseResult createBankCapture(CaptureContext context) {
         try {
@@ -295,6 +305,118 @@ public class PaymentServiceImpl implements PaymentService {
                 Result.success(paymentMapper.toDto(payment)));
     }
 
+    @Override
+    public Result<PaymentResponse> createVoid(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
+
+        while (true) {
+            IdempotencyKey key = idempotencyKeyService
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
+
+
+            if (key.hasCachedResponse(VoidRecoveryPoints.FINISHED)) {
+                return deserialize(key.getResponseBody(), new TypeReference<>() {
+                });
+            }
+
+            Payment payment = key.getPayment();
+
+            if (payment.getStatus() != PaymentStatus.AUTHORIZED) {
+                return Result.failure(ErrorCode.BAD_REQUEST, "Only authorized payment can be voided");
+            }
+
+            Transaction authorizationTransaction = transactionRepository.findByPaymentIdAndType(key.getPayment().getId(), TransactionType.AUTHORIZED).orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+
+            switch (key.getRecoveryPoint()) {
+                case VoidRecoveryPoints.STARTED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::startVoid);
+                }
+
+                case VoidRecoveryPoints.BANK_VOID -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::createBankVoid);
+                }
+
+                case VoidRecoveryPoints.BANK_VOID_COMPLETED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::completeBankVoid);
+                }
+
+                case VoidRecoveryPoints.FINISHED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::finishVoid);
+                }
+
+                default -> throw new IllegalStateException(
+                        "Unknown recovery point "
+                                + key.getRecoveryPoint());
+
+            }
+        }
+    }
+
+
+    private PhaseResult startVoid(VoidContext context) {
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        return new PhaseResult.RecoveryPoint(
+                VoidRecoveryPoints.BANK_VOID
+        );
+    }
+
+    private PhaseResult createBankVoid(VoidContext context) {
+
+        try {
+            context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+            VoidBankRequest request = new VoidBankRequest(context.authorizationRefId());
+
+            VoidBankResponse response = bankClient._void(request, "void:" + context.idempotencyKey().getIdempotencyKey());
+
+            Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), context.idempotencyKey().getPayment().getAmountMinor(), TransactionType.VOID, TransactionStatus.SUCCESS, response.voidId());
+
+            transactionRepository.save(transaction);
+
+            return new PhaseResult.RecoveryPoint(
+                    VoidRecoveryPoints.BANK_VOID_COMPLETED
+            );
+        } catch (BankBusinessException ex) {
+            return new PhaseResult.Response<>(Result.failure(bankClient.mapBankErrrorToErrorCode(ex.getStatus()), ex.getMessage()));
+        }
+    }
+
+    private PhaseResult completeBankVoid(VoidContext context) {
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        return new PhaseResult.RecoveryPoint(
+                VoidRecoveryPoints.FINISHED
+        );
+    }
+
+    private PhaseResult finishVoid(VoidContext context) {
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        Payment payment = context.idempotencyKey().getPayment();
+        payment.setStatus(PaymentStatus.VOIDED);
+
+        return new PhaseResult.Response<>(
+                Result.success(paymentMapper.toDto(payment)));
+    }
+
+
+    @Override
+    public Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
+        return null;
+    }
 
     private <T> T deserialize(String json, TypeReference<T> typeRef) {
         try {
@@ -303,5 +425,6 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException(e);
         }
     }
+
 
 }
