@@ -10,6 +10,10 @@ import com.osigie.payment_gateway.domain.entity.Transaction;
 import com.osigie.payment_gateway.domain.recovery_points.AuthorizeRecoveryPoints;
 import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
+import com.osigie.payment_gateway.dto.payment.PaymentResponse;
+import com.osigie.payment_gateway.exception.BankBusinessException;
+import com.osigie.payment_gateway.exception.ResourceNotFoundException;
+import com.osigie.payment_gateway.mapper.PaymentMapper;
 import com.osigie.payment_gateway.repository.MerchantRepository;
 import com.osigie.payment_gateway.repository.PaymentRepository;
 import com.osigie.payment_gateway.repository.TransactionRepository;
@@ -33,11 +37,12 @@ public class PaymentServiceImpl implements PaymentService {
     private final MerchantRepository merchantRepository;
     private final BankClient bankClient;
     private final TransactionRepository transactionRepository;
+    private final PaymentMapper paymentMapper;
 
     public PaymentServiceImpl(AtomicPhaseExecutor executor,
                               IdempotencyKeyService idempotencyKeyService,
                               PaymentRepository paymentRepository, ObjectMapper objectMapper,
-                              MerchantRepository merchantRepository, BankClient bankClient, TransactionRepository transactionRepository) {
+                              MerchantRepository merchantRepository, BankClient bankClient, TransactionRepository transactionRepository, PaymentMapper paymentMapper) {
         this.executor = executor;
         this.idempotencyKeyService = idempotencyKeyService;
         this.paymentRepository = paymentRepository;
@@ -45,18 +50,17 @@ public class PaymentServiceImpl implements PaymentService {
         this.merchantRepository = merchantRepository;
         this.bankClient = bankClient;
         this.transactionRepository = transactionRepository;
+        this.paymentMapper = paymentMapper;
     }
 
     @Override
-    public Result<Payment> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath) {
+    public Result<PaymentResponse> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath) {
         while (true) {
-//            TODO: handle exception class
-//            TODO: wire request details
             IdempotencyKey key = idempotencyKeyService
                     .getOrCreateIdempotencyKey(merchantId, idempotencyKey, objectMapper.writeValueAsString(dto), requestPath);
 
 
-            if (Objects.equals(key.getRecoveryPoint(), AuthorizeRecoveryPoints.FINISHED)) {
+            if (Objects.equals(key.getRecoveryPoint(), AuthorizeRecoveryPoints.FINISHED) && key.getResponseBody() != null) {
                 return deserialize(key.getResponseBody(), new TypeReference<>() {
                 });
             }
@@ -82,10 +86,14 @@ public class PaymentServiceImpl implements PaymentService {
                     executor.execute(merchantId, idempotencyKey, k -> context, this::createBankAuthorization);
                 }
 
+                case AuthorizeRecoveryPoints.BANK_AUTHORIZATION_COMPLETED -> {
+                    executor.execute(merchantId, idempotencyKey, k -> context, this::completeBankAuthorization);
+                }
+
                 case AuthorizeRecoveryPoints.FINISHED -> {
                     executor.execute(merchantId, idempotencyKey, k -> context, this::finishAuthorization);
                 }
-                default -> throw new RuntimeException(
+                default -> throw new IllegalStateException(
                         "Unknown recovery point "
                                 + key.getRecoveryPoint());
             }
@@ -101,9 +109,9 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PhaseResult createAuthorization(StartAuthorizationContext context) {
-//        TODO: exception
+
         Merchant merchant = merchantRepository.findById(context.merchantId())
-                .orElseThrow(() -> new RuntimeException("Merchant not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Merchant not found"));
 
         Payment payment = new Payment(merchant,
                 context.dto().merchantOrderId(),
@@ -138,14 +146,21 @@ public class PaymentServiceImpl implements PaymentService {
             transactionRepository.save(transaction);
 
             return new PhaseResult.RecoveryPoint(
-                    AuthorizeRecoveryPoints.FINISHED
+                    AuthorizeRecoveryPoints.BANK_AUTHORIZATION_COMPLETED
             );
-        } catch (Exception e) {
-            return new PhaseResult.Response<>(Result.failure(ErrorCode.BANK_UNAVAILABLE, e.getMessage()));
+        } catch (BankBusinessException ex) {
+            return new PhaseResult.Response<>(Result.failure(bankClient.mapBankErrrorToErrorCode(ex.getStatus()), ex.getMessage()));
         }
 
     }
 
+
+    private PhaseResult completeBankAuthorization(StartAuthorizationContext startAuthorizationContext) {
+
+        return new PhaseResult.RecoveryPoint(
+                AuthorizeRecoveryPoints.FINISHED
+        );
+    }
 
     private PhaseResult finishAuthorization(StartAuthorizationContext context) {
         context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
@@ -156,7 +171,7 @@ public class PaymentServiceImpl implements PaymentService {
         paymentRepository.save(payment);
 
         return new PhaseResult.Response<>(
-                Result.success(payment));
+                Result.success(paymentMapper.toDto(payment)));
     }
 
     private <T> T deserialize(String json, TypeReference<T> typeRef) {

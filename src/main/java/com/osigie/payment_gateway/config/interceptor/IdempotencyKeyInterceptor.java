@@ -1,6 +1,7 @@
 package com.osigie.payment_gateway.config.interceptor;
 
 
+import com.osigie.payment_gateway.exception.BadRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpMethod;
@@ -23,9 +24,8 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
 
         String key = request.getHeader("x-idempotency-key");
 
-        //TODO: create exception
         if (key == null || key.isBlank()) {
-            throw new RuntimeException("x-idempotency-key is null or blank");
+            throw new BadRequestException("x-idempotency-key is null or blank");
         }
 
         request.setAttribute(IDEMPOTENCY_KEY, key);

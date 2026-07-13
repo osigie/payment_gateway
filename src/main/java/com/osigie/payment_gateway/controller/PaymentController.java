@@ -21,19 +21,19 @@ import java.util.UUID;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final PaymentMapper paymentMapper;
 
-    public PaymentController(PaymentService paymentService, PaymentMapper paymentMapper) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.paymentMapper = paymentMapper;
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey,   HttpServletRequest request) {
+    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+
         String requestPath = request.getRequestURI();
-        Result<Payment> payment = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
-        Result<PaymentResponse> paymentDto = payment.map(paymentMapper::toDto);
-        return ResponseMapper.toResponse(paymentDto);
+
+        Result<PaymentResponse> paymentResponse = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+
+        return ResponseMapper.toResponse(paymentResponse);
     }
 
 
