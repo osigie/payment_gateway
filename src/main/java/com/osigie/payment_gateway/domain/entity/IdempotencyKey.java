@@ -1,7 +1,5 @@
 package com.osigie.payment_gateway.domain.entity;
 
-import com.osigie.payment_gateway.domain.IdempotencyKeyType;
-import com.osigie.payment_gateway.domain.TransactionType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -9,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -146,4 +145,8 @@ public class IdempotencyKey {
         this.merchant = merchant;
     }
 
+    public boolean hasCachedResponse(String finishedRecoveryPoint) {
+        return Objects.equals(recoveryPoint, finishedRecoveryPoint)
+                && responseBody != null;
+    }
 }
