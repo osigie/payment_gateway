@@ -2,6 +2,8 @@ package com.osigie.payment_gateway.config.security;
 
 import com.osigie.payment_gateway.domain.MerchantPrincipal;
 import com.osigie.payment_gateway.domain.entity.Merchant;
+import com.osigie.payment_gateway.exception.ResourceNotFoundException;
+import com.osigie.payment_gateway.exception.UnauthorizedException;
 import com.osigie.payment_gateway.repository.MerchantRepository;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -24,8 +26,8 @@ public class ApiKeyAuthenticationProvider implements AuthenticationProvider {
     public @Nullable Authentication authenticate(Authentication authentication) throws AuthenticationException {
         String apiKey = (String) authentication.getCredentials();
 
-//        TODO: create exception for this
-        Merchant merchant = merchantRepository.findByApiKey(apiKey).orElseThrow(() -> new RuntimeException("Merchant with apiKey " + apiKey + " not found"));
+        Merchant merchant = merchantRepository.findByApiKey(apiKey).orElseThrow(() -> new UnauthorizedException("Merchant with apiKey " + apiKey + " not found"));
+
         MerchantPrincipal principal = new MerchantPrincipal(merchant.getId(), merchant.getName());
 
         return new ApiAuthenticationToken(principal, Collections.emptyList());
