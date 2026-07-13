@@ -154,7 +154,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
 
-            AuthorizeBankRequest request = new AuthorizeBankRequest(context.dto().amountMinor(), context.dto().cardDetails().cardNumber(), context.dto().cardDetails().cvv(), context.dto().cardDetails().expiryMonth(), context.dto().cardDetails().expiryYear());
+            AuthorizeBankRequest request = new AuthorizeBankRequest(context.idempotencyKey().getPayment().getAmountMinor(), context.dto().cardDetails().cardNumber(), context.dto().cardDetails().cvv(), context.dto().cardDetails().expiryMonth(), context.dto().cardDetails().expiryYear());
 
             AuthorizeBankResponse response = bankClient.authorize(request, "authorization:" + context.idempotencyKey().getIdempotencyKey());
 
@@ -492,7 +492,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             RefundBankResponse response = bankClient.refund(request, "refund:" + context.idempotencyKey().getIdempotencyKey());
 
-            Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), context.idempotencyKey().getPayment().getAmountMinor(), TransactionType.REFUND, TransactionStatus.SUCCESS, response.refundId());
+            Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), request.amount(), TransactionType.REFUND, TransactionStatus.SUCCESS, response.refundId());
 
             transactionRepository.save(transaction);
 
