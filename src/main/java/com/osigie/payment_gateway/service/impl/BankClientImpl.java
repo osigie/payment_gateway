@@ -155,6 +155,35 @@ public class BankClientImpl implements BankClient {
                 }));
     }
 
+    @Override
+    public RefundBankResponse refund(RefundBankRequest request, String idempotencyKey) {
+        return restClient.post()
+                .uri("/refunds")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", idempotencyKey)
+                .body(request)
+                .exchange(((clientRequest, clientResponse) -> {
+                    HttpStatusCode status = clientResponse.getStatusCode();
+
+                    if (status.is2xxSuccessful()) {
+                        return clientResponse.bodyTo(RefundBankResponse.class);
+                    }
+
+                    BankErrorResponse errorResponse = clientResponse.bodyTo(BankErrorResponse.class);
+
+                    if (errorResponse == null) {
+                        throw new BankUnavailableException("Bank returned " + status + " with an empty response body.");
+                    }
+
+                    if (status.is4xxClientError()) {
+                        throw new BankBusinessException(errorResponse.message(), errorResponse.error(), status);
+                    }
+
+                    throw new BankUnavailableException(errorResponse.message());
+                }));
+    }
+
     public ErrorCode mapBankErrrorToErrorCode(HttpStatusCode status) {
         return switch (status) {
             case HttpStatus.BAD_REQUEST -> ErrorCode.BAD_REQUEST;

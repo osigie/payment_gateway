@@ -12,4 +12,6 @@ public interface BankClient {
     public CaptureBankResponse capture(CaptureBankRequest request, String idempotencyKey);
 
     VoidBankResponse _void(VoidBankRequest request, String idempotencyKey);
+
+    RefundBankResponse refund(RefundBankRequest request, String idempotencyKey);
 }

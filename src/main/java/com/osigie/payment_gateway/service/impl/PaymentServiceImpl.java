@@ -4,7 +4,9 @@ import com.osigie.payment_gateway.domain.*;
 import com.osigie.payment_gateway.domain.bank.*;
 import com.osigie.payment_gateway.domain.bank.context.AuthorizationContext;
 import com.osigie.payment_gateway.domain.bank.context.CaptureContext;
+import com.osigie.payment_gateway.domain.bank.context.RefundContext;
 import com.osigie.payment_gateway.domain.bank.context.VoidContext;
+import com.osigie.payment_gateway.domain.bank.recovery_points.RefundRecoveryPoints;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.entity.Merchant;
 import com.osigie.payment_gateway.domain.entity.Payment;
@@ -415,7 +417,109 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
-        return null;
+        while (true) {
+            IdempotencyKey key = idempotencyKeyService
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
+
+
+            if (key.hasCachedResponse(RefundRecoveryPoints.FINISHED)) {
+                return deserialize(key.getResponseBody(), new TypeReference<>() {
+                });
+            }
+
+            Payment payment = key.getPayment();
+
+            if (payment.getStatus() != PaymentStatus.CAPTURED) {
+                return Result.failure(ErrorCode.BAD_REQUEST, "Only captured payment can be refunded");
+            }
+
+            Transaction authorizationTransaction = transactionRepository.findByPaymentIdAndType(key.getPayment().getId(), TransactionType.CAPTURE).orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+
+            switch (key.getRecoveryPoint()) {
+                case RefundRecoveryPoints.STARTED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::startRefund);
+                }
+
+                case RefundRecoveryPoints.BANK_REFUND -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::createBankRefund);
+                }
+
+                case RefundRecoveryPoints.BANK_REFUND_COMPLETED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::completeBankRefund);
+                }
+
+                case RefundRecoveryPoints.FINISHED -> {
+                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                            authorizationTransaction.getBankReference(),
+                            k
+                    ), this::finishRefund);
+                }
+
+                default -> throw new IllegalStateException(
+                        "Unknown recovery point "
+                                + key.getRecoveryPoint());
+
+            }
+        }
+    }
+
+
+    private PhaseResult startRefund(RefundContext context) {
+
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        return new PhaseResult.RecoveryPoint(
+                RefundRecoveryPoints.BANK_REFUND
+        );
+    }
+
+    private PhaseResult createBankRefund(RefundContext context) {
+
+        try {
+            context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+            RefundBankRequest request = new RefundBankRequest(context.captureRefId(), context.idempotencyKey().getPayment().getAmountMinor());
+
+            RefundBankResponse response = bankClient.refund(request, "refund:" + context.idempotencyKey().getIdempotencyKey());
+
+            Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), context.idempotencyKey().getPayment().getAmountMinor(), TransactionType.REFUND, TransactionStatus.SUCCESS, response.refundId());
+
+            transactionRepository.save(transaction);
+
+            return new PhaseResult.RecoveryPoint(
+                    RefundRecoveryPoints.BANK_REFUND_COMPLETED
+            );
+        } catch (BankBusinessException ex) {
+            return new PhaseResult.Response<>(Result.failure(bankClient.mapBankErrrorToErrorCode(ex.getStatus()), ex.getMessage()));
+        }
+    }
+
+    private PhaseResult completeBankRefund(RefundContext context) {
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        return new PhaseResult.RecoveryPoint(
+                RefundRecoveryPoints.FINISHED
+        );
+    }
+
+    private PhaseResult finishRefund(RefundContext context) {
+        context.idempotencyKey().setLastRunAt(OffsetDateTime.now());
+
+        Payment payment = context.idempotencyKey().getPayment();
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        return new PhaseResult.Response<>(
+                Result.success(paymentMapper.toDto(payment)));
     }
 
     private <T> T deserialize(String json, TypeReference<T> typeRef) {
