@@ -39,7 +39,8 @@ CREATE TABLE idempotency_keys
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key);
+CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key, request_path);
+
 
 CREATE INDEX idx_idempotency_keys_payment_id ON idempotency_keys (payment_id);
 
@@ -54,7 +55,7 @@ CREATE TABLE transactions
     created_at     TIMESTAMPTZ                   NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_payment_id ON transactions (payment_id);
+CREATE INDEX idx_transactions_payment_id_and_type ON transactions (payment_id, type);
 
 --SEED TEST MERCHANT
 INSERT INTO merchants (id, name, api_key, created_at, updated_at)
