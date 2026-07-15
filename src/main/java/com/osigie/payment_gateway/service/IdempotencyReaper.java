@@ -1,4 +1,4 @@
-package com.osigie.payment_gateway.service.recovery;
+package com.osigie.payment_gateway.service;
 
 import com.osigie.payment_gateway.repository.IdempotencyKeyRepository;
 import jakarta.transaction.Transactional;

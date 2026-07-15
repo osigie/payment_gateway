@@ -35,20 +35,5 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
             """)
     List<UUID> findExpiredKeys(@Param("cutoff") OffsetDateTime cutoff, Pageable pageable);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"merchant", "payment"})
-    @Query("""
-                SELECT i
-                FROM IdempotencyKey i
-                WHERE i.recoveryPoint <> :finished
-                  AND i.lastRunAt < :lastRun
-                ORDER BY i.createdAt ASC
-            """)
-    List<IdempotencyKey> findIncompleteKeys(
-            @Param("lastRun") OffsetDateTime lastRun,
-            @Param("finished") String finished,
-            Pageable pageable
-    );
-
 }
 
