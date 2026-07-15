@@ -277,7 +277,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             CaptureBankRequest request = new CaptureBankRequest(context.amount(), context.authorizationRefId());
 
-            CaptureBankResponse response = bankClient.capture(request, "capture:" + context.idempotencyKey().getIdempotencyKey());
+            CaptureBankResponse response = bankClient.capture(request, context.authorizationRefId() + ":" + context.idempotencyKey().getIdempotencyKey());
 
             Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), response.amount(), TransactionType.CAPTURE, TransactionStatus.SUCCESS, response.captureId());
 
@@ -386,7 +386,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             VoidBankRequest request = new VoidBankRequest(context.authorizationRefId());
 
-            VoidBankResponse response = bankClient._void(request, "void:" + context.idempotencyKey().getIdempotencyKey());
+            VoidBankResponse response = bankClient._void(request, context.authorizationRefId() + ":" + context.idempotencyKey().getIdempotencyKey());
 
             Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), context.idempotencyKey().getPayment().getAmountMinor(), TransactionType.VOID, TransactionStatus.SUCCESS, response.voidId());
 
@@ -494,7 +494,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             RefundBankRequest request = new RefundBankRequest(context.captureRefId(), context.idempotencyKey().getPayment().getAmountMinor());
 
-            RefundBankResponse response = bankClient.refund(request, "refund:" + context.idempotencyKey().getIdempotencyKey());
+            RefundBankResponse response = bankClient.refund(request, context.captureRefId() + ":" + context.idempotencyKey().getIdempotencyKey());
 
             Transaction transaction = new Transaction(context.idempotencyKey().getPayment(), request.amount(), TransactionType.REFUND, TransactionStatus.SUCCESS, response.refundId());
 
