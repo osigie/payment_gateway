@@ -30,7 +30,7 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
 
 
     @Query("""
-            SELECT r.idempotencyKey FROM IdempotencyKey r WHERE r.createdAt < :cutoff
+            SELECT r.id FROM IdempotencyKey r WHERE r.createdAt < :cutoff
             """)
     List<UUID> findExpiredKeys(@Param("cutoff") OffsetDateTime cutoff, Pageable pageable);
 }
