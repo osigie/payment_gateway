@@ -1,0 +1,4 @@
+- Same idempotency key with different parameter will give the result of the first idempotency, for strict handling hashing request params on idempotency to allow quick comparing to prevent mismatch will be needed.
+- Stores card number/CVV in plaintext in the idempotency table — needs revisiting before this handles real card data or usage of vault.
+- External mutation is done on atomic phase that is inside a transaction because of the synchronous nature of the bank requests and a short timeout is used for the api call, which this could have be done with traditional outbox pattern if it was asynchronous. 
+- 
