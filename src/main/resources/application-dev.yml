@@ -24,6 +24,10 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  bank:
+    base-url: "http://localhost:8787/api/v1"
+    read-timeout: 5s
+    timeout: 3s
 
 logging:
   level:

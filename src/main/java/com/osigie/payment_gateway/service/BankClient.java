@@ -9,7 +9,7 @@ public interface BankClient {
 
     ErrorCode mapBankErrrorToErrorCode(HttpStatusCode status);
 
-    public CaptureBankResponse capture(CaptureBankRequest request, String idempotencyKey);
+    CaptureBankResponse capture(CaptureBankRequest request, String idempotencyKey);
 
     VoidBankResponse _void(VoidBankRequest request, String idempotencyKey);
 
