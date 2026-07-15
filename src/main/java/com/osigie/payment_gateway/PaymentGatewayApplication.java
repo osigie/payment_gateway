@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableResilientMethods
 @EnableScheduling
+@EnableConfigurationProperties(BankProperties.class)
 public class PaymentGatewayApplication {
 
 	public static void main(String[] args) {
