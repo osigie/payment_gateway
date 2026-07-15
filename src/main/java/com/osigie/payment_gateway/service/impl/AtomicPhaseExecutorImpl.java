@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.service.impl;
 
+import com.osigie.payment_gateway.domain.Operation;
 import com.osigie.payment_gateway.domain.PhaseResult;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.bank.recovery_points.AuthorizeRecoveryPoints;
@@ -24,19 +25,19 @@ public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
 
     @Transactional
     @Override
-    public void execute(UUID merchantId, String idempotencyKey, String requestPath, Function<IdempotencyKey, PhaseResult> phase) {
-        execute(merchantId, idempotencyKey,requestPath, Function.identity(), phase);
+    public void execute(UUID merchantId, String idempotencyKey, Operation operation, Function<IdempotencyKey, PhaseResult> phase) {
+        execute(merchantId, idempotencyKey,operation, Function.identity(), phase);
     }
 
 
     @Transactional
     @Override
-    public <T> void execute(UUID merchantId, String idempotencyKey, String requestPath,
+    public <T> void execute(UUID merchantId, String idempotencyKey, Operation operation,
                             Function<IdempotencyKey, T> loader,
                             Function<T, PhaseResult> phase) {
 
         IdempotencyKey key = idempotencyKeyService
-                .findIdempotencyForUpdate(idempotencyKey, merchantId, requestPath)
+                .findIdempotencyForUpdate(idempotencyKey, merchantId, operation)
                 .orElseThrow(() -> new IllegalStateException("Idempotency key not found"));
 
 

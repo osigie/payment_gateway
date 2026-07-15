@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.domain.entity;
 
+import com.osigie.payment_gateway.domain.Operation;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -35,8 +36,6 @@ public class IdempotencyKey {
     @Column(name = "request_params", nullable = false, columnDefinition = "JSONB")
     private String requestParams;
 
-    @Column(name = "request_path", nullable = false)
-    private String requestPath;
 
     @Column(name = "response_status")
     private int responseStatus;
@@ -52,6 +51,10 @@ public class IdempotencyKey {
     @Column(name = "last_run_at", nullable = false, updatable = false)
     private OffsetDateTime lastRunAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Operation operation;
+
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -62,13 +65,13 @@ public class IdempotencyKey {
     private OffsetDateTime updatedAt;
 
 
-    public IdempotencyKey(Merchant merchant, String idempotencyKey, String requestParams, String requestPath, String recoveryPoint, OffsetDateTime lastRunAt) {
+    public IdempotencyKey(Merchant merchant, String idempotencyKey, String requestParams, String recoveryPoint, OffsetDateTime lastRunAt, Operation operation) {
         this.idempotencyKey = idempotencyKey;
         this.requestParams = requestParams;
-        this.requestPath = requestPath;
         this.recoveryPoint = recoveryPoint;
         this.lastRunAt = lastRunAt;
         this.merchant = merchant;
+        this.operation = operation;
     }
 
 
@@ -92,9 +95,6 @@ public class IdempotencyKey {
         return requestParams;
     }
 
-    public String getRequestPath() {
-        return requestPath;
-    }
 
     public int getResponseStatus() {
         return responseStatus;
@@ -120,6 +120,10 @@ public class IdempotencyKey {
         return updatedAt;
     }
 
+    public Operation getOperation() {
+        return operation;
+    }
+
 
     public void setResponseStatus(int responseStatus) {
         this.responseStatus = responseStatus;
@@ -140,6 +144,7 @@ public class IdempotencyKey {
     public void setPayment(Payment payment) {
         this.payment = payment;
     }
+
 
     public void setMerchant(Merchant merchant) {
         this.merchant = merchant;

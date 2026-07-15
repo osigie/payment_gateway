@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.repository;
 
+import com.osigie.payment_gateway.domain.Operation;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
@@ -20,18 +21,34 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"payment", "merchant"})
     @Query("""
-            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey AND i.requestPath = :requestPath
+            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey AND i.operation = :operation
             """)
     Optional<IdempotencyKey> findIdempotencyForUpdate(
-            String idempotencyKey, UUID merchantId, String requestPath);
+            String idempotencyKey, UUID merchantId, Operation operation);
 
 
-    Optional<IdempotencyKey> findByMerchantIdAndIdempotencyKeyAndRequestPath(UUID merchantId, String idempotencyKey, String requestPath);
+    Optional<IdempotencyKey> findByMerchantIdAndIdempotencyKeyAndOperation(UUID merchantId, String idempotencyKey, Operation operation);
 
 
     @Query("""
             SELECT r.id FROM IdempotencyKey r WHERE r.createdAt < :cutoff
             """)
     List<UUID> findExpiredKeys(@Param("cutoff") OffsetDateTime cutoff, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"merchant", "payment"})
+    @Query("""
+                SELECT i
+                FROM IdempotencyKey i
+                WHERE i.recoveryPoint <> :finished
+                  AND i.lastRunAt < :lastRun
+                ORDER BY i.createdAt ASC
+            """)
+    List<IdempotencyKey> findIncompleteKeys(
+            @Param("lastRun") OffsetDateTime lastRun,
+            @Param("finished") String finished,
+            Pageable pageable
+    );
+
 }
 
