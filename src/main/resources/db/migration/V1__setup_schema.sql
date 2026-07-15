@@ -30,7 +30,7 @@ CREATE TABLE idempotency_keys
     merchant_id          UUID         NOT NULL REFERENCES merchants (id),
     payment_id           UUID REFERENCES payments (id),
     request_params       JSONB        NOT NULL,
-    request_path         VARCHAR(100) NOT NULL,
+    operation         VARCHAR(100) NOT NULL,
     response_status      INT,
     response_body        JSONB,
     recovery_point       VARCHAR(50)  NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE idempotency_keys
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key, request_path);
+CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key, operation);
 
 
 CREATE INDEX idx_idempotency_keys_payment_id ON idempotency_keys (payment_id);
