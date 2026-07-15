@@ -5,7 +5,6 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +20,7 @@ public class IdempotencyReaper {
 
     private static final Logger LOG = LoggerFactory.getLogger(IdempotencyReaper.class);
     private static final int BATCH_SIZE = 1000;
-    private static final Duration REAP_TIMEOUT = Duration.ofHours(48);
+    private static final Duration REAP_TIMEOUT = Duration.ofHours(24);
 
     private final IdempotencyKeyRepository idempotencyKeyRepository;
 
@@ -33,12 +32,12 @@ public class IdempotencyReaper {
     @Transactional
     public void reap() {
         OffsetDateTime cutoff = OffsetDateTime.now(ZoneOffset.UTC).minus(REAP_TIMEOUT);
-        int reaped;
+        int reaped = 0;
         do {
 
             List<UUID> keys = idempotencyKeyRepository.findExpiredKeys(cutoff, PageRequest.of(0, BATCH_SIZE));
 
-            if (!keys.iterator().hasNext()) {
+            if (!keys.isEmpty()) {
                 idempotencyKeyRepository.deleteAllByIdInBatch(keys);
             }
             reaped = keys.size();
