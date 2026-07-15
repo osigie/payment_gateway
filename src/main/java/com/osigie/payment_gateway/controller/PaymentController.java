@@ -1,6 +1,7 @@
 package com.osigie.payment_gateway.controller;
 
 import com.osigie.payment_gateway.domain.MerchantPrincipal;
+import com.osigie.payment_gateway.domain.Operation;
 import com.osigie.payment_gateway.dto.BaseResponse;
 import com.osigie.payment_gateway.dto.PageResponse;
 import com.osigie.payment_gateway.dto.ResponseMapper;
@@ -8,7 +9,6 @@ import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 import com.osigie.payment_gateway.dto.payment.PaymentResponse;
 import com.osigie.payment_gateway.service.PaymentService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,9 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/api/v1/payments")
@@ -32,11 +30,9 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+    public ResponseEntity<BaseResponse<PaymentResponse>> createAuthorize(@RequestBody CreateAuthorizationRequestDto dto, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
 
-        String requestPath = request.getRequestURI();
-
-        Result<PaymentResponse> paymentResponse = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+        Result<PaymentResponse> paymentResponse = paymentService.createAuthorize(dto, merchantPrincipal.merchantId(), idempotencyKey, Operation.PAYMENT_AUTHORIZE);
 
         return ResponseMapper.toResponse(paymentResponse);
     }
@@ -72,30 +68,27 @@ public class PaymentController {
 
 
     @PostMapping("{paymentId}/capture")
-    public ResponseEntity<?> createCapture(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
-        String requestPath = request.getRequestURI();
+    public ResponseEntity<?> createCapture(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
 
-        Result<PaymentResponse> paymentResponse = paymentService.createCapture(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+        Result<PaymentResponse> paymentResponse = paymentService.createCapture(paymentId, merchantPrincipal.merchantId(), idempotencyKey, Operation.PAYMENT_CAPTURE);
 
         return ResponseMapper.toResponse(paymentResponse);
     }
 
     @PostMapping("{paymentId}/void")
-    public ResponseEntity<?> createVoid(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
-        String requestPath = request.getRequestURI();
+    public ResponseEntity<?> createVoid(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
 
-        Result<PaymentResponse> paymentResponse = paymentService.createVoid(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+        Result<PaymentResponse> paymentResponse = paymentService.createVoid(paymentId, merchantPrincipal.merchantId(), idempotencyKey, Operation.PAYMENT_VOID);
 
         return ResponseMapper.toResponse(paymentResponse);
     }
 
 
     @PostMapping("{paymentId}/refund")
-    public ResponseEntity<?> createRefund(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey, HttpServletRequest request) {
+    public ResponseEntity<?> createRefund(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal, @RequestHeader("x-idempotency-key") String idempotencyKey) {
 
-        String requestPath = request.getRequestURI();
 
-        Result<PaymentResponse> paymentResponse = paymentService.createRefund(paymentId, merchantPrincipal.merchantId(), idempotencyKey, requestPath);
+        Result<PaymentResponse> paymentResponse = paymentService.createRefund(paymentId, merchantPrincipal.merchantId(), idempotencyKey, Operation.PAYMENT_REFUND);
 
         return ResponseMapper.toResponse(paymentResponse);
 

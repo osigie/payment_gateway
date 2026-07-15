@@ -61,11 +61,12 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Result<PaymentResponse> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, String requestPath) {
+    public Result<PaymentResponse> createAuthorize(CreateAuthorizationRequestDto dto, UUID merchantId, String idempotencyKey, Operation operation) {
+
         while (true) {
 
             IdempotencyKey key = idempotencyKeyService
-                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, objectMapper.writeValueAsString(dto), requestPath);
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, objectMapper.writeValueAsString(dto), operation);
 
 
             if (Objects.equals(key.getRecoveryPoint(), AuthorizeRecoveryPoints.FINISHED) && key.getResponseBody() != null) {
@@ -75,7 +76,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             switch (key.getRecoveryPoint()) {
                 case AuthorizeRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -83,7 +84,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.AUTHORIZATION_CREATED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -91,7 +92,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.BANK_AUTHORIZED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -99,7 +100,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.BANK_AUTHORIZATION_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -107,7 +108,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case AuthorizeRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new AuthorizationContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new AuthorizationContext(
                             merchantId,
                             k,
                             dto
@@ -197,12 +198,12 @@ public class PaymentServiceImpl implements PaymentService {
 
 
     @Override
-    public Result<PaymentResponse> createCapture(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
+    public Result<PaymentResponse> createCapture(UUID paymentId, UUID merchantId, String idempotencyKey, Operation operation) {
 
         while (true) {
 
             IdempotencyKey key = idempotencyKeyService
-                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), operation);
 
 
             if (key.hasCachedResponse(CaptureRecoveryPoints.FINISHED)) {
@@ -222,7 +223,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             switch (key.getRecoveryPoint()) {
                 case CaptureRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -230,7 +231,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.BANK_CAPTURE -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -238,7 +239,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.BANK_CAPTURE_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -246,7 +247,7 @@ public class PaymentServiceImpl implements PaymentService {
                 }
 
                 case CaptureRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new CaptureContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new CaptureContext(
                             authorizationTransaction.getBankReference(),
                             authorizationTransaction.getAmountMinor(),
                             k
@@ -312,11 +313,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Result<PaymentResponse> createVoid(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
-
+    public Result<PaymentResponse> createVoid(UUID paymentId, UUID merchantId, String idempotencyKey, Operation operation) {
         while (true) {
             IdempotencyKey key = idempotencyKeyService
-                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), operation);
 
 
             if (key.hasCachedResponse(VoidRecoveryPoints.FINISHED)) {
@@ -335,28 +335,28 @@ public class PaymentServiceImpl implements PaymentService {
 
             switch (key.getRecoveryPoint()) {
                 case VoidRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new VoidContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::startVoid);
                 }
 
                 case VoidRecoveryPoints.BANK_VOID -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new VoidContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::createBankVoid);
                 }
 
                 case VoidRecoveryPoints.BANK_VOID_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new VoidContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::completeBankVoid);
                 }
 
                 case VoidRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new VoidContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new VoidContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::finishVoid);
@@ -420,10 +420,11 @@ public class PaymentServiceImpl implements PaymentService {
 
 
     @Override
-    public Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
+    public Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, Operation operation) {
+
         while (true) {
             IdempotencyKey key = idempotencyKeyService
-                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), requestPath);
+                    .getOrCreateIdempotencyKey(merchantId, idempotencyKey, paymentId, objectMapper.writeValueAsString(paymentId), operation);
 
 
             if (key.hasCachedResponse(RefundRecoveryPoints.FINISHED)) {
@@ -442,28 +443,28 @@ public class PaymentServiceImpl implements PaymentService {
 
             switch (key.getRecoveryPoint()) {
                 case RefundRecoveryPoints.STARTED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new RefundContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::startRefund);
                 }
 
                 case RefundRecoveryPoints.BANK_REFUND -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new RefundContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::createBankRefund);
                 }
 
                 case RefundRecoveryPoints.BANK_REFUND_COMPLETED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new RefundContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::completeBankRefund);
                 }
 
                 case RefundRecoveryPoints.FINISHED -> {
-                    executor.execute(merchantId, idempotencyKey, requestPath, k -> new RefundContext(
+                    executor.execute(merchantId, idempotencyKey, operation, k -> new RefundContext(
                             authorizationTransaction.getBankReference(),
                             k
                     ), this::finishRefund);
