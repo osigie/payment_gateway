@@ -2,17 +2,24 @@ package com.osigie.payment_gateway.controller;
 
 import com.osigie.payment_gateway.domain.MerchantPrincipal;
 import com.osigie.payment_gateway.dto.BaseResponse;
+import com.osigie.payment_gateway.dto.PageResponse;
 import com.osigie.payment_gateway.dto.ResponseMapper;
 import com.osigie.payment_gateway.dto.Result;
 import com.osigie.payment_gateway.dto.payment.CreateAuthorizationRequestDto;
 import com.osigie.payment_gateway.dto.payment.PaymentResponse;
 import com.osigie.payment_gateway.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/api/v1/payments")
@@ -36,14 +43,31 @@ public class PaymentController {
 
 
     @GetMapping("{paymentId}")
-    public ResponseEntity<?> getPayment(@PathVariable("paymentId") UUID paymentId) {
-        return ResponseEntity.ok(null);
+    public ResponseEntity<BaseResponse<PaymentResponse>> getPayment(@PathVariable UUID paymentId, @AuthenticationPrincipal MerchantPrincipal merchantPrincipal) {
+        Result<PaymentResponse> paymentResponse = paymentService.getPayment(paymentId, merchantPrincipal.merchantId());
+        return ResponseMapper.toResponse(paymentResponse);
     }
 
+
     @GetMapping
-    public ResponseEntity<?> getPayments(@RequestParam(required = false) String merchantOrderId,
-                                         @RequestParam(required = false) String merchantCustomerId) {
-        return ResponseEntity.ok(null);
+    public ResponseEntity<PageResponse<PaymentResponse>> getPayments(@RequestParam(required = false) String merchantOrderId,
+                                                                     @RequestParam(required = false) String merchantCustomerId,
+                                                                     @RequestParam(defaultValue = "0") int page,
+                                                                     @RequestParam(defaultValue = "10") int size,
+                                                                     @AuthenticationPrincipal MerchantPrincipal merchantPrincipal
+
+    ) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PaymentResponse> payments = paymentService.getPayments(merchantCustomerId, merchantOrderId, pageable, merchantPrincipal.merchantId());
+
+        PageResponse<PaymentResponse> response = new PageResponse<>(
+                payments.getTotalElements(),
+                payments.getNumber(),
+                payments.getSize(),
+                payments.getContent());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 

@@ -20,10 +20,14 @@ import com.osigie.payment_gateway.exception.ResourceNotFoundException;
 import com.osigie.payment_gateway.mapper.PaymentMapper;
 import com.osigie.payment_gateway.repository.PaymentRepository;
 import com.osigie.payment_gateway.repository.TransactionRepository;
+import com.osigie.payment_gateway.repository.spec.PaymentSpecification;
 import com.osigie.payment_gateway.service.AtomicPhaseExecutor;
 import com.osigie.payment_gateway.service.BankClient;
 import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import com.osigie.payment_gateway.service.PaymentService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -417,6 +421,27 @@ public class PaymentServiceImpl implements PaymentService {
     public Result<PaymentResponse> createRefund(UUID paymentId, UUID merchantId, String idempotencyKey, String requestPath) {
         return null;
     }
+
+
+    @Override
+    public Result<PaymentResponse> getPayment(UUID paymentId, UUID merchantId) {
+        Optional<Payment> payment = paymentRepository.findPaymentByIdAndMerchantId(paymentId, merchantId);
+        return payment.map(value -> Result.success(paymentMapper.toDto(value))).orElseGet(() -> Result.failure(ErrorCode.PAYMENT_NOT_FOUND, "Payment not found"));
+
+    }
+
+    @Override
+    public Page<PaymentResponse> getPayments(String merchantCustomerId, String merchantOrderId, Pageable pageable, UUID merchantId) {
+
+        Specification<Payment> spec =
+                Specification.where(PaymentSpecification.belongsToMerchant(merchantId))
+                        .and(PaymentSpecification.belongsToMerchantCustomer(merchantCustomerId))
+                        .and(PaymentSpecification.belongsToMerchantOrder(merchantOrderId));
+
+        return paymentRepository.findAll(spec, pageable).map(paymentMapper::toDto);
+
+    }
+
 
     private <T> T deserialize(String json, TypeReference<T> typeRef) {
         try {
