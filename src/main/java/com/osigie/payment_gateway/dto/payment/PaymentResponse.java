@@ -1,7 +1,6 @@
 package com.osigie.payment_gateway.dto.payment;
 
 import com.osigie.payment_gateway.domain.PaymentStatus;
-import com.osigie.payment_gateway.domain.entity.Payment;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
