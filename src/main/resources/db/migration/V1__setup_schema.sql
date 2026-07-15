@@ -14,7 +14,7 @@ CREATE TABLE payments
     merchant_order_id    VARCHAR(100) NOT NULL,
     merchant_customer_id VARCHAR(100) NOT NULL,
     amount_minor         BIGINT       NOT NULL,
-    currency             VARCHAR(3)      NOT NULL,
+    currency             VARCHAR(3)   NOT NULL,
     status               VARCHAR(50)  NOT NULL, -- PENDING, AUTHORIZED, CAPTURED, FAILED, REFUNDED, VOIDED
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -25,18 +25,18 @@ CREATE INDEX idx_merchant_customer_id ON payments (merchant_customer_id);
 
 CREATE TABLE idempotency_keys
 (
-    id                   UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
-    idempotency_key      VARCHAR(100) NOT NULL,
-    merchant_id          UUID         NOT NULL REFERENCES merchants (id),
-    payment_id           UUID REFERENCES payments (id),
-    request_params       JSONB        NOT NULL,
-    operation         VARCHAR(100) NOT NULL,
-    response_status      INT,
-    response_body        JSONB,
-    recovery_point       VARCHAR(50)  NOT NULL,
-    last_run_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id              UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
+    idempotency_key VARCHAR(100) NOT NULL,
+    merchant_id     UUID         NOT NULL REFERENCES merchants (id),
+    payment_id      UUID REFERENCES payments (id),
+    request_params  JSONB        NOT NULL,
+    operation       VARCHAR(100) NOT NULL,
+    response_status INT,
+    response_body   JSONB,
+    recovery_point  VARCHAR(50)  NOT NULL,
+    last_run_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX idempotency_keys_merchants_id_idempotency_key ON idempotency_keys (merchant_id, idempotency_key, operation);
