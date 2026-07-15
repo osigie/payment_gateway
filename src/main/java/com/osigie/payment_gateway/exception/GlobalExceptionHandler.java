@@ -1,5 +1,6 @@
 package com.osigie.payment_gateway.exception;
 
+import com.osigie.payment_gateway.domain.ErrorCode;
 import com.osigie.payment_gateway.dto.ApiError;
 import com.osigie.payment_gateway.dto.BaseResponse;
 import org.slf4j.Logger;
@@ -24,8 +25,8 @@ public class GlobalExceptionHandler {
 
         log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(BaseResponse.failure("RESOURCE_NOT_FOUND", ex.getMessage()));
+                .status(ErrorCode.RESOURCE_NOT_FOUND.getHttpStatus())
+                .body(BaseResponse.failure(ErrorCode.RESOURCE_NOT_FOUND.name(), ex.getMessage()));
     }
 
     @ExceptionHandler(BadRequestException.class)
@@ -33,8 +34,8 @@ public class GlobalExceptionHandler {
         log.warn("Bad request: {}", ex.getMessage());
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(BaseResponse.failure("BAD_REQUEST", ex.getMessage()));
+                .status(ErrorCode.BAD_REQUEST.getHttpStatus())
+                .body(BaseResponse.failure(ErrorCode.BAD_REQUEST.name(), ex.getMessage()));
     }
 
 
@@ -43,8 +44,8 @@ public class GlobalExceptionHandler {
         log.warn("Bank Unavailable: {}", ex.getMessage());
 
         return ResponseEntity
-                .status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(BaseResponse.failure("BANK_UNAVAILABLE", ex.getMessage()));
+                .status(ErrorCode.BANK_UNAVAILABLE.getHttpStatus())
+                .body(BaseResponse.failure(ErrorCode.BANK_UNAVAILABLE.name(), ex.getMessage()));
     }
 
 
@@ -52,8 +53,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<Void>> handleAuthentication(AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(BaseResponse.failure("AUTHENTICATION_REQUIRED", "Authentication required"));
+                .status(ErrorCode.AUTHORIZATION_REQUIRED.getHttpStatus())
+                .body(BaseResponse.failure(ErrorCode.AUTHORIZATION_REQUIRED.name(), "Authentication required"));
     }
 
 
@@ -61,8 +62,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<Void>> handleUnauthorized(UnauthorizedException ex) {
         log.warn("Invalid api key: {}", ex.getMessage());
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(BaseResponse.failure("INVALID_API_KEY", "Authentication required"));
+                .status(ErrorCode.INVALID_API_KEY.getHttpStatus())
+                .body(BaseResponse.failure(ErrorCode.INVALID_API_KEY.name(), "Authentication required"));
     }
 
 
@@ -81,9 +82,9 @@ public class GlobalExceptionHandler {
         log.warn("Validation errors: {}", errors);
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(ErrorCode.VALIDATION_FAILED.getHttpStatus())
                 .body(new BaseResponse<>(false, errors,
-                        new ApiError("VALIDATION_FAILED", "Validation failed")));
+                        new ApiError(ErrorCode.VALIDATION_FAILED.name(), "Validation failed")));
     }
 
     @ExceptionHandler(Exception.class)
