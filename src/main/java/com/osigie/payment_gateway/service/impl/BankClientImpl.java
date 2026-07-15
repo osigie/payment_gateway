@@ -100,40 +100,45 @@ public class BankClientImpl implements BankClient {
             String idempotencyKey,
             Class<T> responseType
     ) {
-        return bankRestClient.post()
-                .uri(uri)
-                .header("Idempotency-Key", idempotencyKey)
-                .body(request)
-                .exchange((clientRequest, clientResponse) -> {
+        try {
 
-                    HttpStatusCode status = clientResponse.getStatusCode();
+            return bankRestClient.post()
+                    .uri(uri)
+                    .header("Idempotency-Key", idempotencyKey)
+                    .body(request)
+                    .exchange((clientRequest, clientResponse) -> {
 
-                    if (status.is2xxSuccessful()) {
-                        return clientResponse.bodyTo(responseType);
-                    }
-                    BankErrorResponse error = null;
-                    try {
+                        HttpStatusCode status = clientResponse.getStatusCode();
 
-                        error = clientResponse.bodyTo(BankErrorResponse.class);
-                    } catch (Exception _) {
+                        if (status.is2xxSuccessful()) {
+                            return clientResponse.bodyTo(responseType);
+                        }
+                        BankErrorResponse error = null;
+                        try {
+
+                            error = clientResponse.bodyTo(BankErrorResponse.class);
+                        } catch (Exception _) {
 //in case error structure changes
-                    }
+                        }
 
-                    if (error == null) {
-                        throw new BankUnavailableException(
-                                "Bank returned " + status + " with empty body");
-                    }
+                        if (error == null) {
+                            throw new BankUnavailableException(
+                                    "Bank returned " + status + " with empty body");
+                        }
 
-                    if (status.is4xxClientError()) {
-                        throw new BankBusinessException(
-                                error.message(),
-                                error.error(),
-                                status
-                        );
-                    }
+                        if (status.is4xxClientError()) {
+                            throw new BankBusinessException(
+                                    error.message(),
+                                    error.error(),
+                                    status
+                            );
+                        }
 
-                    throw new BankUnavailableException(error.message());
-                });
+                        throw new BankUnavailableException(error.message());
+                    });
+        } catch (ResourceAccessException ex) {
+            throw new BankUnavailableException("Bank is temporarily unavailable please try again later", ex);
+        }
     }
 
 
