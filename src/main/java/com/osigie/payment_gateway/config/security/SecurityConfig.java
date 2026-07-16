@@ -11,17 +11,27 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    public static final String[] WHITELISTED_ENDPOINTS = {
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/swagger-resources*",
+            "/actuator/**"
+    };
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ApiKeyAuthenticationFilter apiKeyFilter) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/payments/test").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(WHITELISTED_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -31,4 +41,5 @@ public class SecurityConfig {
     AuthenticationManager authenticationManager(ApiKeyAuthenticationProvider provider) throws Exception {
         return new ProviderManager(provider);
     }
+
 }
