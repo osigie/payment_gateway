@@ -15,6 +15,51 @@ security:
   - apiKeyAuth: [ ]
 
 paths:
+  /actuator/health:
+    get:
+      tags:
+        - Monitoring
+      summary: Actuator health check
+      description: Standard Spring Boot health check endpoint. Returns 200 OK if the service is running. No authentication required. The response includes all health components and their status.
+      operationId: getActuatorHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  components:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                          example: UP
+              example:
+                status: UP
+                components:
+                  db:
+                    status: UP
+                  diskSpace:
+                    status: UP
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: DOWN
+              example:
+                status: DOWN
   /api/v1/payments:
     post:
       tags:
