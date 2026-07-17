@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -124,6 +125,15 @@ public class GlobalExceptionHandler {
                         new ApiError(ErrorCode.VALIDATION_FAILED.name(), message)));
     }
 
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<BaseResponse<Void>> handleNoResourceFoundException(NoResourceFoundException ex) {
+        log.error("No resource found exception: ", ex);
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(BaseResponse.failure("NO_RESOURCE_FOUND",
+                        ex.getMessage()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<Void>> handleGenericException(Exception ex) {
