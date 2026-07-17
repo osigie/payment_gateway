@@ -23,6 +23,7 @@ A robust payment microservice for merchant payment flows, built with Spring Boot
 - Java 25
 - Docker and Docker Compose
 - Maven 3.9+
+- Running Bank API
 
 ### Quick Start (Docker Compose)
 ```sh
