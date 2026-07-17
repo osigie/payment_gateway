@@ -3,15 +3,20 @@ package com.osigie.payment_gateway.service;
 import com.osigie.payment_gateway.domain.Operation;
 import com.osigie.payment_gateway.domain.PhaseResult;
 import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
-
 import java.util.UUID;
 import java.util.function.Function;
 
 public interface AtomicPhaseExecutor {
-    <T> void execute(UUID merchantId, String idempotencyKey, Operation operation, Function<IdempotencyKey, T> loader,
-                     Function<T, PhaseResult> phase);
+  <T> void execute(
+      UUID merchantId,
+      String idempotencyKey,
+      Operation operation,
+      Function<IdempotencyKey, T> loader,
+      Function<T, PhaseResult> phase);
 
-    void execute(UUID merchantId, String idempotencyKey, Operation operation, Function<IdempotencyKey, PhaseResult> phase);
-
-
+  void execute(
+      UUID merchantId,
+      String idempotencyKey,
+      Operation operation,
+      Function<IdempotencyKey, PhaseResult> phase);
 }

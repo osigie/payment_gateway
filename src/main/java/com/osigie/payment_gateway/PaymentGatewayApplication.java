@@ -13,8 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties(BankProperties.class)
 public class PaymentGatewayApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(PaymentGatewayApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(PaymentGatewayApplication.class, args);
+  }
 }

@@ -2,76 +2,79 @@ package com.osigie.payment_gateway.service.impl;
 
 import com.osigie.payment_gateway.domain.Operation;
 import com.osigie.payment_gateway.domain.PhaseResult;
-import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.domain.bank.recovery_points.AuthorizeRecoveryPoints;
+import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
 import com.osigie.payment_gateway.service.AtomicPhaseExecutor;
 import com.osigie.payment_gateway.service.IdempotencyKeyService;
 import jakarta.transaction.Transactional;
+import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.UUID;
-import java.util.function.Function;
-
 @Service
 public class AtomicPhaseExecutorImpl implements AtomicPhaseExecutor {
-    private final ObjectMapper objectMapper;
-    private final IdempotencyKeyService idempotencyKeyService;
+  private final ObjectMapper objectMapper;
+  private final IdempotencyKeyService idempotencyKeyService;
 
-    public AtomicPhaseExecutorImpl(ObjectMapper objectMapper, IdempotencyKeyService idempotencyKeyService) {
-        this.objectMapper = objectMapper;
-        this.idempotencyKeyService = idempotencyKeyService;
-    }
+  public AtomicPhaseExecutorImpl(
+      ObjectMapper objectMapper, IdempotencyKeyService idempotencyKeyService) {
+    this.objectMapper = objectMapper;
+    this.idempotencyKeyService = idempotencyKeyService;
+  }
 
-    @Transactional
-    @Override
-    public void execute(UUID merchantId, String idempotencyKey, Operation operation, Function<IdempotencyKey, PhaseResult> phase) {
-        execute(merchantId, idempotencyKey,operation, Function.identity(), phase);
-    }
+  @Transactional
+  @Override
+  public void execute(
+      UUID merchantId,
+      String idempotencyKey,
+      Operation operation,
+      Function<IdempotencyKey, PhaseResult> phase) {
+    execute(merchantId, idempotencyKey, operation, Function.identity(), phase);
+  }
 
+  @Transactional
+  @Override
+  public <T> void execute(
+      UUID merchantId,
+      String idempotencyKey,
+      Operation operation,
+      Function<IdempotencyKey, T> loader,
+      Function<T, PhaseResult> phase) {
 
-    @Transactional
-    @Override
-    public <T> void execute(UUID merchantId, String idempotencyKey, Operation operation,
-                            Function<IdempotencyKey, T> loader,
-                            Function<T, PhaseResult> phase) {
+    IdempotencyKey key =
+        idempotencyKeyService
+            .findIdempotencyForUpdate(idempotencyKey, merchantId, operation)
+            .orElseThrow(() -> new IllegalStateException("Idempotency key not found"));
 
-        IdempotencyKey key = idempotencyKeyService
-                .findIdempotencyForUpdate(idempotencyKey, merchantId, operation)
-                .orElseThrow(() -> new IllegalStateException("Idempotency key not found"));
+    T resource = loader.apply(key);
 
+    PhaseResult phaseResult = phase.apply(resource);
 
-        T resource = loader.apply(key);
-
-        PhaseResult phaseResult = phase.apply(resource);
-
-        switch (phaseResult) {
-            case PhaseResult.NoOp ignored -> {
-            }
-            case PhaseResult.RecoveryPoint recoveryPoint -> {
-                key.setRecoveryPoint(recoveryPoint.name());
-            }
-            case PhaseResult.Response<?> response -> {
-                key.setRecoveryPoint(AuthorizeRecoveryPoints.FINISHED);
-                int status = 200;
-                if (response.result().error() != null) {
-                    status = response.result().error().code().getHttpStatus().value();
-                }
-                key.setResponseStatus(status);
-                key.setResponseBody(serialize(response.result()));
-
-            }
+    switch (phaseResult) {
+      case PhaseResult.NoOp ignored -> {}
+      case PhaseResult.RecoveryPoint recoveryPoint -> {
+        key.setRecoveryPoint(recoveryPoint.name());
+      }
+      case PhaseResult.Response<?> response -> {
+        key.setRecoveryPoint(AuthorizeRecoveryPoints.FINISHED);
+        int status = 200;
+        if (response.result().error() != null) {
+          status = response.result().error().code().getHttpStatus().value();
         }
-        idempotencyKeyService.update(key);
+        key.setResponseStatus(status);
+        key.setResponseBody(serialize(response.result()));
+      }
     }
+    idempotencyKeyService.update(key);
+  }
 
-    private String serialize(Object body) {
+  private String serialize(Object body) {
 
-        try {
-            return objectMapper.writeValueAsString(body);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
+    try {
+      return objectMapper.writeValueAsString(body);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 }
