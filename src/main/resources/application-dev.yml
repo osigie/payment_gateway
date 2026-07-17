@@ -22,6 +22,13 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    url: /openapi.yaml
+    enabled: true
+
 server:
   port: ${SERVER_PORT:8080}
   bank:

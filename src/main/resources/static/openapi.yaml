@@ -1,0 +1,603 @@
+openapi: 3.0.3
+info:
+  title: Payment Gateway
+  description: A payment gateway with integrates with mock bank API that behaves like a real banking partner.
+  version: "1.0"
+  contact:
+    name: Ken Osagie
+    email: kenosagie88@gmail.com
+
+servers:
+  - url: http://localhost:8080
+    description: Payment Gateway Local Env
+
+security:
+  - apiKeyAuth: [ ]
+
+paths:
+  /api/v1/payments:
+    post:
+      tags:
+        - Payments
+      summary: Create authorization
+      description: Creates a new payment authorization with the provided card details.
+      operationId: createAuthorize
+      parameters:
+        - name: x-idempotency-key
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "idem_01JZV5D4E1XQ7M9A8BCDEF1234"
+          description: Unique idempotency key to prevent duplicate processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAuthorizationRequest'
+            example:
+              merchantOrderId: "order-12345"
+              merchantCustomerId: "cust-67890"
+              amountMinor: 5000
+              cardDetails:
+                cardNumber: "4111111111111111"
+                cvv: "123"
+                expiryMonth: 12
+                expiryYear: 2027
+      responses:
+        "200":
+          description: Authorization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  merchantOrderId: "order-12345"
+                  merchantCustomerId: "cust-67890"
+                  amountMinor: 5000
+                  status: AUTHORIZED
+                  paymentStatus: AUTHORIZED
+                  createdAt: "2026-07-17T10:30:00+01:00"
+                  updatedAt: "2026-07-17T10:30:00+01:00"
+                error: null
+        "400":
+          description: Validation failed — invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                success: false
+                data:
+                  cardNumber: "Card number is required"
+                  amountMinor: "Amount must be at least 10"
+                error:
+                  code: VALIDATION_FAILED
+                  message: Validation failed
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "402":
+          description: Insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                data: null
+                error:
+                  code: INSUFFICIENT_FUNDS
+                  message: Insufficient funds to complete this transaction
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/BankUnavailableError'
+    get:
+      tags:
+        - Payments
+      summary: List payments
+      description: Retrieves a paginated list of payments for the merchant.
+      operationId: getPayments
+      parameters:
+        - name: merchantOrderId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by merchant order ID
+        - name: merchantCustomerId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by merchant customer ID
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Page number (zero-based)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Number of records per page
+      responses:
+        "200":
+          description: Payments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponse'
+              example:
+                totalRecords: 1
+                pageNo: 0
+                pageSize: 10
+                content:
+                  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                    merchantOrderId: "order-12345"
+                    merchantCustomerId: "cust-67890"
+                    amountMinor: 5000
+                    status: AUTHORIZED
+                    paymentStatus: AUTHORIZED
+                    createdAt: "2026-07-17T10:30:00+01:00"
+                    updatedAt: "2026-07-17T10:30:00+01:00"
+        "400":
+          description: Validation failed — invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                success: false
+                data:
+                  size: "must be less than or equal to 100"
+                  page: "must be greater than or equal to 0"
+                error:
+                  code: VALIDATION_FAILED
+                  message: validation failed
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/payments/{paymentId}:
+    get:
+      tags:
+        - Payments
+      summary: Get payment by ID
+      description: Retrieves a single payment by its unique identifier.
+      operationId: getPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Payment unique identifier
+      responses:
+        "200":
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  merchantOrderId: "order-12345"
+                  merchantCustomerId: "cust-67890"
+                  amountMinor: 5000
+                  status: AUTHORIZED
+                  paymentStatus: AUTHORIZED
+                  createdAt: "2026-07-17T10:30:00+01:00"
+                  updatedAt: "2026-07-17T10:30:00+01:00"
+                error: null
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/payments/{paymentId}/capture:
+    post:
+      tags:
+        - Payments
+      summary: Capture payment
+      description: Captures a previously authorized payment.
+      operationId: createCapture
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Payment unique identifier
+        - name: x-idempotency-key
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "idem_01JZV5D4E1XQ7M9A8BCDEF1234"
+          description: Unique idempotency key to prevent duplicate processing
+      responses:
+        "200":
+          description: Payment captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  merchantOrderId: "order-12345"
+                  merchantCustomerId: "cust-67890"
+                  amountMinor: 5000
+                  status: CAPTURED
+                  paymentStatus: CAPTURED
+                  createdAt: "2026-07-17T10:30:00+01:00"
+                  updatedAt: "2026-07-17T10:30:00+01:00"
+                error: null
+        "400":
+          $ref: '#/components/responses/BadRequestError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/BankUnavailableError'
+
+  /api/v1/payments/{paymentId}/void:
+    post:
+      tags:
+        - Payments
+      summary: Void payment
+      description: Voids an authorized payment that has not yet been captured.
+      operationId: createVoid
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Payment unique identifier
+        - name: x-idempotency-key
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "idem_01JZV5D4E1XQ7M9A8BCDEF1234"
+          description: Unique idempotency key to prevent duplicate processing
+      responses:
+        "200":
+          description: Payment voided successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  merchantOrderId: "order-12345"
+                  merchantCustomerId: "cust-67890"
+                  amountMinor: 5000
+                  status: VOIDED
+                  paymentStatus: VOIDED
+                  createdAt: "2026-07-17T10:30:00+01:00"
+                  updatedAt: "2026-07-17T10:30:00+01:00"
+                error: null
+        "400":
+          $ref: '#/components/responses/BadRequestError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/BankUnavailableError'
+
+  /api/v1/payments/{paymentId}/refund:
+    post:
+      tags:
+        - Payments
+      summary: Refund payment
+      description: Refunds a captured payment.
+      operationId: createRefund
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Payment unique identifier
+        - name: x-idempotency-key
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "idem_01JZV5D4E1XQ7M9A8BCDEF1234"
+          description: Unique idempotency key to prevent duplicate processing
+      responses:
+        "200":
+          description: Payment refunded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  merchantOrderId: "order-12345"
+                  merchantCustomerId: "cust-67890"
+                  amountMinor: 5000
+                  status: REFUNDED
+                  paymentStatus: REFUNDED
+                  createdAt: "2026-07-17T10:30:00+01:00"
+                  updatedAt: "2026-07-17T10:30:00+01:00"
+                error: null
+        "400":
+          $ref: '#/components/responses/BadRequestError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/BankUnavailableError'
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key used to authenticate requests
+
+  schemas:
+    CreateAuthorizationRequest:
+      type: object
+      required:
+        - merchantOrderId
+        - merchantCustomerId
+        - amountMinor
+        - cardDetails
+      properties:
+        merchantOrderId:
+          type: string
+          description: Merchant's unique order identifier
+        merchantCustomerId:
+          type: string
+          description: Merchant's unique customer identifier
+        amountMinor:
+          type: integer
+          format: int64
+          minimum: 10
+          description: Amount in minor currency units (e.g., cents)
+        cardDetails:
+          $ref: '#/components/schemas/CardDetails'
+
+    CardDetails:
+      type: object
+      required:
+        - cardNumber
+        - cvv
+        - expiryMonth
+        - expiryYear
+      properties:
+        cardNumber:
+          type: string
+          description: Card number (PAN)
+        cvv:
+          type: string
+          description: Card verification value
+        expiryMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Card expiry month
+        expiryYear:
+          type: integer
+          minimum: 2024
+          description: Card expiry year
+
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Payment unique identifier
+        merchantOrderId:
+          type: string
+          description: Merchant's order identifier
+        merchantCustomerId:
+          type: string
+          description: Merchant's customer identifier
+        amountMinor:
+          type: integer
+          format: int64
+          description: Amount in minor currency units
+        status:
+          type: string
+          enum:
+            - PENDING
+            - AUTHORIZED
+            - CAPTURED
+            - FAILED
+            - REFUNDED
+            - VOIDED
+          description: Current payment status
+        paymentStatus:
+          type: string
+          enum:
+            - PENDING
+            - AUTHORIZED
+            - CAPTURED
+            - FAILED
+            - REFUNDED
+            - VOIDED
+          description: Current payment status (alias)
+        createdAt:
+          type: string
+          format: date-time
+          description: Payment creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Payment last update timestamp
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/PaymentResponse'
+        error:
+          nullable: true
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ApiError'
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          type: object
+          additionalProperties:
+            type: string
+          description: Field-level validation error messages
+        error:
+          $ref: '#/components/schemas/ApiError'
+
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error description
+
+    PageResponse:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+          format: int64
+          description: Total number of records matching the query
+        pageNo:
+          type: integer
+          description: Current page number (zero-based)
+        pageSize:
+          type: integer
+          description: Number of records per page
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentResponse'
+
+  responses:
+    BadRequestError:
+      description: Bad request — business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: BAD_REQUEST
+              message: Only authorized payment can be captured
+
+    UnauthorizedError:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: AUTHORIZATION_REQUIRED
+              message: Authentication required
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: PAYMENT_NOT_FOUND
+              message: No payment found for the given reference
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: An unexpected error occurred
+
+    BankUnavailableError:
+      description: Bank service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: BANK_UNAVAILABLE
+              message: Bank is temporarily unavailable please try again later

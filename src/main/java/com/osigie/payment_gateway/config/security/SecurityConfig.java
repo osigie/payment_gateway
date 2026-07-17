@@ -20,8 +20,7 @@ public class SecurityConfig {
     public static final String[] WHITELISTED_ENDPOINTS = {
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/swagger-resources/**",
-            "/swagger-resources*",
+            "/openapi.yaml",
             "/actuator/**"
     };
 
