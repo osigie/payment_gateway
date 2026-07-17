@@ -1,0 +1,44 @@
+services:
+  payment_gateway_app:
+    image: osigie4488/payment_gateway:${APP_VERSION}
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_gateway
+      SPRING_DATASOURCE_USERNAME: ${DATABASE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASSWORD}
+      SERVER_BANK_BASE_URL: ${BANK_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - payment_gateway-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: payment_gateway
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U payment_gateway" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payment_gateway-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  payment_gateway-network:
+    driver: bridge

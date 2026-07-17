@@ -29,6 +29,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<testcontainers.version>2.0.5</testcontainers.version>
+		<image.version>1.0.1</image.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -62,9 +63,14 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-flyway-test</artifactId>
@@ -106,6 +112,25 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.5.1</version>
+				<configuration>
+					<to>
+						<image>osigie4488/${project.artifactId}:${image.version}</image>
+					</to>
+                    <from>
+                        <platforms>
+                            <platform>
+                                <architecture>arm64</architecture>
+                                <os>linux</os>
+                            </platform>
+                        </platforms>
+                    </from>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

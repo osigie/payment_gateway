@@ -154,20 +154,6 @@ paths:
                     paymentStatus: AUTHORIZED
                     createdAt: "2026-07-17T10:30:00+01:00"
                     updatedAt: "2026-07-17T10:30:00+01:00"
-        "400":
-          description: Validation failed — invalid pagination parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-              example:
-                success: false
-                data:
-                  size: "must be less than or equal to 100"
-                  page: "must be greater than or equal to 0"
-                error:
-                  code: VALIDATION_FAILED
-                  message: validation failed
         "401":
           $ref: '#/components/responses/UnauthorizedError'
         "500":
