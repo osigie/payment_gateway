@@ -1,0 +1,15 @@
+package com.osigie.payment_gateway.dto.payment;
+
+import com.osigie.payment_gateway.domain.PaymentStatus;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+public record PaymentResponse(
+    String merchantOrderId,
+    String merchantCustomerId,
+    long amountMinor,
+    PaymentStatus status,
+    OffsetDateTime createdAt,
+    OffsetDateTime updatedAt,
+    UUID id,
+    PaymentStatus paymentStatus) {}

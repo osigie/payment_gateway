@@ -1,0 +1,37 @@
+package com.osigie.payment_gateway.repository;
+
+import com.osigie.payment_gateway.domain.Operation;
+import com.osigie.payment_gateway.domain.entity.IdempotencyKey;
+import jakarta.persistence.LockModeType;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, UUID> {
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @EntityGraph(attributePaths = {"payment", "merchant"})
+  @Query(
+      """
+            SELECT i from IdempotencyKey i WHERE i.merchant.id = :merchantId AND i.idempotencyKey = :idempotencyKey AND i.operation = :operation
+            """)
+  Optional<IdempotencyKey> findIdempotencyForUpdate(
+      String idempotencyKey, UUID merchantId, Operation operation);
+
+  Optional<IdempotencyKey> findByMerchantIdAndIdempotencyKeyAndOperation(
+      UUID merchantId, String idempotencyKey, Operation operation);
+
+  @Query(
+      """
+            SELECT r.id FROM IdempotencyKey r WHERE r.createdAt < :cutoff
+            """)
+  List<UUID> findExpiredKeys(@Param("cutoff") OffsetDateTime cutoff, Pageable pageable);
+}
